@@ -93,9 +93,9 @@ function emptyState(ic, title, text) { return `<div class="empty"><span class="e
 // ---------- Inicio ----------
 function home() {
   const now = new Date(), month = today().slice(0, 7), s = monthSummary(book, month);
-  const pend = store.pending(), fails = store.failed().length, mes = MESES[now.getMonth()];
+  // Solo se avisa cuando hay algo que resolver. Lo pendiente ya se ve arriba (etiqueta de estado) y en cada movimiento.
+  const fails = store.failed().length, mes = MESES[now.getMonth()];
   const note = fails ? ['note-err', 'alert', `${fails} movimiento${fails === 1 ? '' : 's'} no se pudo enviar. Tocá para revisarlo.`]
-    : pend ? ['note-warn', 'cloud', `${pend} movimiento${pend === 1 ? '' : 's'} esperando señal. Se envía${pend === 1 ? '' : 'n'} solo${pend === 1 ? '' : 's'}.`]
     : (store.sync.state === 'error' && !store.sync.offline) ? ['note-err', 'alert', 'No se pudo actualizar la planilla. Tocá para ver el detalle.'] : null;
   return `<div class="page">
   <div class="hero">
