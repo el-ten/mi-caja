@@ -1,8 +1,8 @@
 // Service worker de Mi Caja: guarda la app en el celular para que abra sin señal.
 // Las llamadas a la planilla (Apps Script, otro dominio) no pasan por acá: las maneja la app con su cola de cambios.
 /* STAMP:BEGIN */
-const BUILD = '427f5b882f';
-const SHELL = ["./","css/style.css","icons/monogram-180.png","icons/monogram-192.png","icons/monogram-32.png","icons/monogram-512.png","index.html","js/api.js","js/app.js","js/book.js","js/connect.js","js/core.js","js/icons.js","js/ledger.js","js/mock.js","js/store.js","js/sync.js","js/version.js","manifest.webmanifest"];
+const BUILD = 'ac5093ce03';
+const SHELL = ["./","css/app.css","icons/apple-touch-icon.png","icons/favicon-32.png","icons/icon-192.png","icons/icon-512.png","icons/maskable-512.png","index.html","js/api.js","js/app.js","js/book.js","js/connect.js","js/core.js","js/icons.js","js/ledger.js","js/mock.js","js/store.js","js/sync.js","js/version.js","manifest.webmanifest"];
 /* STAMP:END */
 const CACHE = `mc-shell-${BUILD}`;
 

@@ -2,36 +2,36 @@
 <html lang="es-AR">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover">
-  <meta name="color-scheme" content="light dark">
-  <meta name="theme-color" content="#176D58" media="(prefers-color-scheme: light)">
-  <meta name="theme-color" content="#181818" media="(prefers-color-scheme: dark)">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
   <title>Mi Caja</title>
-  <meta name="description" content="Tu registro personal de gastos e ingresos, siempre a mano. Funciona sin señal.">
+  <meta name="description" content="Tus gastos e ingresos, siempre a mano. Funciona sin señal.">
+  <meta name="theme-color" content="#0f3d2c">
+  <meta name="color-scheme" content="light dark">
   <link rel="manifest" href="manifest.webmanifest">
-  <link rel="icon" type="image/png" sizes="32x32" href="icons/monogram-32.png">
-  <link rel="apple-touch-icon" sizes="180x180" href="icons/monogram-180.png">
-  <meta name="apple-mobile-web-app-capable" content="yes">
+  <link rel="icon" type="image/png" href="icons/favicon-32.png">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
   <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-title" content="Mi Caja">
+  <!-- "default": la app no se dibuja debajo de la barra de estado (igual que Don Enrique) -->
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="format-detection" content="telephone=no">
-  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/app.css">
 </head>
 <body>
-  <div class="shell">
-    <header><div class="brand"><img class="logo" src="icons/monogram-192.png" width="40" height="40" alt=""> Mi Caja</div><button class="sync-pill" id="sync" type="button" hidden></button></header>
-    <div id="update" class="update" hidden><span>Hay una versión nueva de Mi Caja.</span><button id="applyUpdate" type="button">Actualizar</button></div>
-    <main id="screen" aria-live="polite"></main>
-    <nav id="tabbar" aria-label="Navegación principal" hidden>
-      <button data-page="home" type="button"><svg class="ic" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3.5 10.5 12 4l8.5 6.5"/><path d="M5.5 9v10.5h13V9"/><path d="M10 19.5v-5h4v5"/></svg><span>Inicio</span></button>
-      <button data-page="form" type="button"><svg class="ic" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 8v8M8 12h8"/></svg><span>Cargar</span></button>
-      <button data-page="history" type="button"><svg class="ic" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8.5 7h11M8.5 12h11M8.5 17h11"/><circle cx="4.5" cy="7" r=".8"/><circle cx="4.5" cy="12" r=".8"/><circle cx="4.5" cy="17" r=".8"/></svg><span>Movimientos</span></button>
-      <button data-page="settings" type="button"><svg class="ic" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg><span>Ajustes</span></button>
-    </nav>
-  </div>
+  <div id="edge-band" aria-hidden="true"></div>
+  <header class="appbar" id="appbar">
+    <div class="brand">
+      <span class="logo" id="brandLogo" aria-hidden="true"></span>
+      <div class="brand-text"><b>Mi Caja</b><small>Finanzas personales</small></div>
+    </div>
+    <button class="sync-pill" id="sync" type="button" hidden></button>
+  </header>
+  <div class="update-bar" id="update" hidden><span>Hay una versión nueva de Mi Caja.</span><button id="applyUpdate" type="button">Actualizar</button></div>
+  <main id="view" tabindex="-1"></main>
+  <nav class="tabbar" id="tabbar" aria-label="Secciones"></nav>
   <div id="overlay"></div>
-  <div id="toast" role="status"></div>
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
   <noscript>Mi Caja necesita JavaScript.</noscript>
   <script type="module" src="js/app.js"></script>
 </body>
