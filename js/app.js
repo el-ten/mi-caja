@@ -28,20 +28,17 @@ function dayLabel(s) {
   return `${DIAS[dt.getDay()][0].toUpperCase() + DIAS[dt.getDay()].slice(1)} ${d} de ${MESES[m - 1]}${yy !== t.getFullYear() ? ' de ' + yy : ''}`;
 }
 
-const LOGO = '<svg viewBox="0 0 512 512" width="34" height="34" aria-hidden="true"><defs><linearGradient id="lg-bg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#1b6a4d"/><stop offset="1" stop-color="#0b3022"/></linearGradient><linearGradient id="lg-coin" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f9d77c"/><stop offset="1" stop-color="#e3921d"/></linearGradient><linearGradient id="lg-box" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#0e402e"/><stop offset="1" stop-color="#082a1d"/></linearGradient><clipPath id="lg-c"><rect width="512" height="512" rx="112"/></clipPath></defs><g clip-path="url(#lg-c)"><rect width="512" height="512" fill="url(#lg-bg)"/><circle cx="256" cy="210" r="98" fill="url(#lg-coin)"/><path d="M287 167c-6-11-18-18-32-18-19 0-33 10-33 25 0 34 67 21 67 55 0 16-15 27-35 27-15 0-28-7-35-19M256 132v18M256 256v20" fill="none" stroke="#8a5207" stroke-width="18" stroke-linecap="round"/><rect y="330" width="512" height="182" fill="url(#lg-box)"/><path d="M0 330H512" stroke="#f6efdc" stroke-width="12" opacity=".55"/><rect x="166" y="354" width="180" height="24" rx="12" fill="#f6efdc" opacity=".9"/></g></svg>';
-
-// Dibujo del panel de inicio: la moneda sale como el sol de Don Enrique, sobre el horizonte.
-function heroArt() {
-  const rays = [-64, -32, 0, 32, 64].map((dx) => `M334 70 L${334 + dx} 112`).join('');
-  return '<svg viewBox="0 0 400 160" aria-hidden="true"><defs><linearGradient id="hcoin" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f7cf6b"/><stop offset="1" stop-color="#e3921d"/></linearGradient>' +
-    '<linearGradient id="hsoil" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#0c3324" stop-opacity=".6"/><stop offset="1" stop-color="#0c3324" stop-opacity="0"/></linearGradient>' +
-    '<linearGradient id="hray" gradientUnits="userSpaceOnUse" x1="0" y1="70" x2="0" y2="112"><stop offset="0" stop-color="#f6efdc" stop-opacity=".55"/><stop offset="1" stop-color="#f6efdc" stop-opacity="0"/></linearGradient>' +
-    '<linearGradient id="hline" gradientUnits="userSpaceOnUse" x1="-400" y1="0" x2="400" y2="0"><stop offset="0" stop-color="#f6efdc" stop-opacity="0"/><stop offset=".6" stop-color="#f6efdc" stop-opacity=".15"/><stop offset=".9" stop-color="#f6efdc" stop-opacity=".45"/><stop offset="1" stop-color="#f6efdc" stop-opacity="0"/></linearGradient></defs>' +
-    '<rect x="-2000" y="70" width="4400" height="90" fill="url(#hsoil)"/>' +
-    '<path d="M312 70A22 22 0 0 1 356 70Z" fill="url(#hcoin)" opacity=".95"/>' +
-    `<path d="${rays}" fill="none" stroke="url(#hray)" stroke-width="1.4" stroke-linecap="round"/>` +
-    '<path d="M-400 70H400" stroke="url(#hline)" stroke-width="1.2" fill="none"/></svg>';
+// La moneda del logo (misma forma en el logo, el panel de inicio y la bienvenida). El signo $ está centrado en la moneda.
+const S_PATH = 'M286.6 154.6 C279.4 143.8 268.6 138.4 256 138.4 C236.2 138.4 221.8 149.2 221.8 165.4 C221.8 183.4 238 190.6 256 196 C274 201.4 290.2 208.6 290.2 226.6 C290.2 242.8 275.8 253.6 256 253.6 C243.4 253.6 232.6 248.2 225.4 237.4 M256 118.6V138.4M256 253.6V273.4';
+function coinShape(id, cx, cy, r) {
+  const k = r / 104, t = `translate(${cx - 256 * k} ${cy - 196 * k}) scale(${k})`;
+  return `<defs><linearGradient id="${id}-coin" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f9d77c"/><stop offset="1" stop-color="#e3921d"/></linearGradient></defs>` +
+    `<g transform="${t}"><circle cx="256" cy="196" r="104" fill="url(#${id}-coin)"/><circle cx="256" cy="196" r="84" fill="none" stroke="#b8730f" stroke-width="8" opacity=".5"/>` +
+    `<path d="${S_PATH}" fill="none" stroke="#8a5207" stroke-width="17" stroke-linecap="round" stroke-linejoin="round"/></g>`;
 }
+const coinArt = (id) => `<svg viewBox="140 80 232 232" aria-hidden="true">${coinShape(id, 256, 196, 104)}</svg>`;
+
+const logoSvg = (id, size) => '<svg viewBox="0 0 512 512" width="' + size + '" height="' + size + '" aria-hidden="true"><defs><linearGradient id="' + id + '-bg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#1b6a4d"/><stop offset="1" stop-color="#0b3022"/></linearGradient><linearGradient id="' + id + '-box" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f6efdc"/><stop offset="1" stop-color="#e2d6b8"/></linearGradient><clipPath id="' + id + '-c"><rect width="512" height="512" rx="112"/></clipPath></defs><g clip-path="url(#' + id + '-c)"><rect width="512" height="512" fill="url(#' + id + '-bg)"/><g transform="translate(0 -14)">' + coinShape(id, 256, 196, 104) + '<rect x="104" y="326" width="304" height="124" rx="30" fill="url(#' + id + '-box)"/><rect x="186" y="350" width="140" height="22" rx="11" fill="#0f3d2c"/></g></g></svg>';
 
 let book = buildBook(null, []);
 let page = 'home', mode = 'Gasto', draft = {}, editing = null, detailId = null, connectOpen = false;
@@ -102,7 +99,7 @@ function home() {
     : (store.sync.state === 'error' && !store.sync.offline) ? ['note-err', 'alert', 'No se pudo actualizar la planilla. Tocá para ver el detalle.'] : null;
   return `<div class="page">
   <div class="hero">
-    <div class="hero-art">${heroArt()}</div>
+    <div class="hero-coin">${coinArt('hc')}</div>
     <p class="eyebrow">${DIAS[now.getDay()]} ${now.getDate()} de ${mes}</p>
     <p class="hero-label">Saldo disponible${s.estimated ? ' estimado' : ''}</p>
     <p class="hero-balance">${s.cash == null ? '—' : money(s.cash)}</p>
@@ -335,7 +332,7 @@ async function connect() {
 // ---------- Bienvenida ----------
 function welcome() {
   return `<div class="welcome-page">
-  <div class="w-hero"><div class="w-sun"></div><div class="w-logo">${icon('coin', 44)}</div><h1>Mi Caja</h1><p>Tus gastos e ingresos, cargados en segundos y guardados en tu planilla. Funciona aunque no haya señal.</p></div>
+  <div class="w-hero"><div class="w-coin">${coinArt('wc')}</div><div class="w-logo">${logoSvg('wl', 84)}</div><h1>Mi Caja</h1><p>Tus gastos e ingresos, cargados en segundos y guardados en tu planilla. Funciona aunque no haya señal.</p></div>
   <div class="w-body">
     <button class="btn btn-primary btn-lg btn-block" id="openConnect" type="button">${icon('cloud', 20)} Conectar con mi planilla</button>
     <div class="connect-panel" ${connectOpen ? '' : 'hidden'}>${connectForm()}</div>
@@ -465,7 +462,7 @@ function registerSW() {
 }
 
 async function boot() {
-  $('#brandLogo').innerHTML = LOGO;
+  $('#brandLogo').innerHTML = logoSvg('lg', 34);
   $('#tabbar').innerHTML = [['home', 'Inicio', 'home'], ['form', 'Cargar', 'plus'], ['history', 'Movimientos', 'list'], ['settings', 'Ajustes', 'gear']]
     .map(([p, l, ic]) => `<button type="button" data-page="${p}">${icon(ic, 24)}<span>${l}</span></button>`).join('');
   try { await store.init(); } catch { $('#view').innerHTML = '<div class="page"><h1>No se pudo abrir el almacenamiento</h1><p>Mi Caja necesita permiso para guardar datos en este navegador.</p></div>'; return; }

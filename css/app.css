@@ -537,8 +537,9 @@ textarea.input { padding: 12px 14px; min-height: 80px; resize: vertical; line-he
 #view > .page { max-width: 720px; margin: 0 auto; }
 
 /* inicio: saldo */
-.hero .hero-art { top: 92px; width: 400px; height: 160px; }
-.hero-art svg { width: 400px; height: 160px; }
+.hero > .hero-coin { position: absolute; top: -26px; right: -26px; width: 128px; height: 128px; pointer-events: none; filter: drop-shadow(0 8px 18px rgba(0, 0, 0, .28)); transform: rotate(-12deg); }
+.hero-coin svg { width: 100%; height: 100%; display: block; }
+.hero > *:not(.hero-coin) { position: relative; }
 .hero-label { font-size: .9rem; opacity: .85; margin-top: 14px; }
 .hero-balance { font: 700 2.5rem/1.05 var(--round); letter-spacing: -.02em; margin: 4px 0 4px; font-variant-numeric: tabular-nums; }
 .hero-sub { font-size: .8rem; opacity: .75; margin-bottom: 18px; }
@@ -606,6 +607,10 @@ textarea.input { padding: 12px 14px; min-height: 80px; resize: vertical; line-he
 .tile { color: var(--ink); }
 .btn-sm.btn-ghost { align-self: flex-start; }
 
-/* bienvenida */
-.w-logo .ic { color: #f6d27a; }
+/* bienvenida: la moneda en lugar del sol, sin surcos */
+.w-hero::after { display: none; }
+.w-coin { position: absolute; top: calc(var(--sat) + 4px); right: -40px; width: 150px; height: 150px; transform: rotate(-12deg); filter: drop-shadow(0 10px 24px rgba(0, 0, 0, .3)); }
+.w-coin svg { width: 100%; height: 100%; display: block; }
+.w-logo { background: none; border: 0; width: 84px; height: 84px; }
+.w-logo svg { border-radius: 22px; box-shadow: 0 0 0 1px rgba(255, 255, 255, .14), 0 10px 24px rgba(0, 0, 0, .25); }
 .connect-panel .connect-form { padding: 0; }
