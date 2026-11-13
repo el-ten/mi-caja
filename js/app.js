@@ -17,6 +17,8 @@ const MESES = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', '
 const MES3 = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
 const fdate = (s) => (s ? s.split('-').reverse().join('/') : '');
 const shortDate = (s) => { if (!s) return ''; const [y, m, d] = s.split('-').map(Number); return `${d} ${MES3[m - 1]}${y !== new Date().getFullYear() ? ' ' + y : ''}`; };
+// Para el filtro: "Noviembre" si es de este año, "Nov 2025" si es de otro (así entra en el botón).
+const monthShort = (ym) => { const [y, m] = ym.split('-').map(Number); const n = MESES[m - 1]; return y === new Date().getFullYear() ? n[0].toUpperCase() + n.slice(1) : `${n[0].toUpperCase() + n.slice(1, 3)} ${y}`; };
 const monthName = (ym) => { const [y, m] = ym.split('-'); return `${MESES[Number(m) - 1]} ${y}`; };
 // Montos cortos para los recuadros del inicio: $ 71.685 · $ 1,06 M
 const money0 = (c) => Math.abs(c) >= 100000000 ? `${c < 0 ? '−' : ''}$ ${(Math.abs(c) / 100000000).toLocaleString('es-AR', { maximumFractionDigits: 2 })} M` : `${c < 0 ? '−' : ''}$ ${Math.round(Math.abs(c) / 100).toLocaleString('es-AR')}`;
@@ -232,8 +234,8 @@ function history() {
   <div class="seg">${['Todos', 'Gasto', 'Ingreso', 'Otros'].map((t) => `<button type="button" data-ftype="${t}" class="${filters.type === t ? 'on' : ''}">${t === 'Gasto' ? 'Gastos' : t === 'Ingreso' ? 'Ingresos' : t}</button>`).join('')}</div>
   <label class="searchbox">${icon('search', 20)}<input class="input search" id="q" type="search" placeholder="Buscar descripción, categoría, número…" value="${esc(filters.q)}" enterkeyhint="search"></label>
   <div class="filters fit">
-    <label class="filter">${icon('calendar', 16)}<select class="input select sm" id="fMonth" aria-label="Mes"><option value="">Mes</option>${months.map((m) => `<option value="${m}" ${m === filters.month ? 'selected' : ''}>${monthName(m)}</option>`).join('')}</select></label>
-    <label class="filter">${icon('filter', 16)}<select class="input select sm" id="fCat" aria-label="Categoría"><option value="">Categoría</option>${opts([...new Set(book.rows.map((r) => r.category).filter(Boolean))].sort(), filters.cat)}</select></label>
+    <label class="filter fpill">${icon('calendar', 15)}<span class="ftext">${filters.month ? monthShort(filters.month) : 'Mes'}</span>${icon('down', 14)}<select class="fnative" id="fMonth" aria-label="Mes"><option value="">Todos los meses</option>${months.map((m) => `<option value="${m}" ${m === filters.month ? 'selected' : ''}>${monthShort(m)}</option>`).join('')}</select></label>
+    <label class="filter fpill">${icon('filter', 15)}<span class="ftext">${esc(filters.cat || 'Categoría')}</span>${icon('down', 14)}<select class="fnative" id="fCat" aria-label="Categoría"><option value="">Todas las categorías</option>${opts([...new Set(book.rows.map((r) => r.category).filter(Boolean))].sort(), filters.cat)}</select></label>
   </div>
   ${out || inn ? `<div class="totals"><div class="total tot-out"><small>Gastos</small><b>${money(out)}</b></div><div class="total tot-in"><small>Ingresos</small><b>${money(inn)}</b></div></div>` : ''}
   <div class="list">${html || emptyState('search', 'Nada por acá', 'No hay movimientos con esos filtros.')}</div>

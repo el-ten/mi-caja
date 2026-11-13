@@ -1,4 +1,4 @@
-// Mi Caja · servidor de la planilla (Apps Script) · versión 2.3.0
+// Mi Caja · servidor de la planilla (Apps Script) · versión 2.3.1
 // Archivo generado: no editar a mano. Fuente: js/core.js + tools/gas-adapter.js (repo el-ten/mi-caja).
 
 // Lógica del servidor de Mi Caja. Es la misma en tres lugares:
