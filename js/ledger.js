@@ -4,6 +4,25 @@
 // Saca espacios que mete el teclado de Android después de la coma o el punto.
 export function normalizeDecimalInput(raw) { return String(raw ?? '').replace(/([,.])\s+/g, '$1'); }
 
+// Da formato mientras se escribe: 1000 → 1.000 · 1250,5 → 1.250,5. Los puntos son solo de miles
+// (se agregan solos); los decimales van con coma. maxDec: cuántos decimales se aceptan.
+export function formatAmountInput(raw, maxDec = 2) {
+  const s = String(raw ?? '').replace(/\s/g, '');
+  if (!s) return '';
+  const i = s.indexOf(',');
+  let int = (i < 0 ? s : s.slice(0, i)).replace(/\D/g, '').replace(/^0+(?=\d)/, '');
+  const dec = i < 0 ? null : s.slice(i + 1).replace(/\D/g, '').slice(0, maxDec);
+  const grouped = int.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+  return dec === null ? grouped : `${grouped || '0'},${dec}`;
+}
+// Posición del cursor después de dar formato: misma cantidad de cifras/comas antes del cursor.
+export function caretAfterFormat(formatted, significantBefore) {
+  if (significantBefore <= 0) return 0;
+  let n = 0;
+  for (let k = 0; k < formatted.length; k++) { if (formatted[k] !== '.') n++; if (n >= significantBefore) return k + 1; }
+  return formatted.length;
+}
+
 // Acepta la forma argentina: 15000 · 15.000 · 1.250,50 · 1250,50 · 0.01
 // El punto con grupos de 3 cifras es separador de miles; la coma siempre es decimal.
 export function toPlainDecimal(raw) {

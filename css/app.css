@@ -468,10 +468,20 @@ textarea.input { padding: 12px 14px; min-height: 80px; resize: vertical; line-he
 /* ----- avisos flotantes ----- */
 .toast {
   position: fixed; left: 50%; bottom: calc(var(--tab-h) + var(--sab) + 84px); z-index: 200; transform: translate(-50%, 20px); opacity: 0; pointer-events: none;
-  max-width: min(92vw, 460px); padding: 12px 18px; border-radius: 16px; background: #1f2d25; color: #f4efe0; font-size: .95rem; font-weight: 550; box-shadow: var(--shadow-lg); transition: opacity .2s, transform .2s; text-align: center;
+  width: max-content; max-width: min(92vw, 460px); padding: 12px 18px; border-radius: 16px; background: #1f2d25; color: #f4efe0; font-size: .95rem; font-weight: 550; box-shadow: var(--shadow-lg); transition: opacity .2s, transform .2s; text-align: center;
 }
 .toast.show { opacity: 1; transform: translate(-50%, 0); pointer-events: auto; }
-.toast-ok { background: #17563e; } .toast-warn { background: #8a5a05; } .toast-err { background: #9a2f21; } .toast-info { background: #1f4b66; }
+/* confirmaciones: una pastilla chica y translúcida, casi pegada a la barra de abajo (sobre el botón flotante si hay uno); no se puede tocar */
+.toast-ok {
+  bottom: calc(var(--tab-h) + var(--sab) + 10px); max-width: min(88vw, 340px); padding: 6px 13px 6px 11px; border-radius: 999px;
+  font-size: .8rem; font-weight: 500; letter-spacing: .005em; background: rgba(24, 38, 31, .86); color: #eef3ea;
+  -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); box-shadow: 0 2px 10px rgba(0, 0, 0, .16);
+  transform: translate(-50%, 8px); pointer-events: none !important;
+}
+body.has-fab .toast-ok { bottom: calc(var(--tab-h) + var(--sab) + 80px); }
+.toast-ok.show { transform: translate(-50%, 0); }
+.toast-ok::before { content: ''; display: inline-block; width: 6px; height: 6px; margin-right: 8px; border-radius: 50%; background: #7fd6a4; vertical-align: .08em; }
+.toast-warn { background: #8a5a05; } .toast-err { background: #9a2f21; } .toast-info { background: #1f4b66; }
 
 /* ----- ajustes ----- */
 .conn-row { display: flex; align-items: center; gap: 12px; }

@@ -41,3 +41,13 @@ test('subcategorías usadas con la categoría van primero', () => {
   const s = subcategoriesFor(rows, 'Alimentación', ['Spotify', 'Panaderia', 'Carniceria', 'Bar']);
   assert.deepEqual(s.used, ['Carniceria', 'Panaderia']); assert.deepEqual(s.rest, ['Spotify', 'Bar']);
 });
+
+test('el importe se formatea con punto de miles mientras se escribe', async () => {
+  const { formatAmountInput: f, caretAfterFormat: c } = await import('../js/ledger.js');
+  assert.equal(f('1000'), '1.000'); assert.equal(f('1234567'), '1.234.567'); assert.equal(f('15.000'), '15.000');
+  assert.equal(f('1250,5'), '1.250,5'); assert.equal(f('1250,567'), '1.250,56'); assert.equal(f(',5'), '0,5');
+  assert.equal(f('1.0000'), '10.000'); assert.equal(f('007'), '7'); assert.equal(f(''), ''); assert.equal(f('12,'), '12,');
+  assert.equal(f('1585,123456', 6), '1.585,123456');
+  assert.equal(parseAmount(f('15000')), 1500000); assert.equal(parseAmount(f('1250,50')), 125050); assert.equal(parseAmount(f('999')), 99900);
+  assert.equal(c('1.000', 4), 5); assert.equal(c('1.000', 1), 1); assert.equal(c('12.345', 2), 2);
+});

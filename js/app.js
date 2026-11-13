@@ -3,7 +3,7 @@ import { store } from './store.js';
 import { sync, startAutoSync, isSyncing } from './sync.js';
 import { api, ServerError, resetDemo } from './api.js';
 import { buildBook, monthSummary, isCredit, EDITABLE_TYPES } from './book.js';
-import { normalizeDecimalInput, convertAmount, suggestedCategories, subcategoriesFor, money, centsToInput } from './ledger.js';
+import { formatAmountInput, caretAfterFormat, convertAmount, suggestedCategories, subcategoriesFor, money, centsToInput } from './ledger.js';
 import { makeCode, parseCode, validUrl } from './connect.js';
 import { icon } from './icons.js';
 import { VERSION, VERSION_FECHA } from './version.js';
@@ -47,7 +47,7 @@ let pendingRender = false, busy = false, swWaiting = null, swReady = false;
 
 // ---------- utilidades ----------
 let toastTimer;
-function toast(msg, tone = '', ms = 3500) { const t = $('#toast'); t.textContent = msg; t.className = `toast show ${tone ? 'toast-' + tone : ''}`; clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove('show'), ms); }
+function toast(msg, tone = '', ms = tone === 'ok' ? 1800 : 3500) { const t = $('#toast'); t.textContent = msg; t.className = `toast show ${tone ? 'toast-' + tone : ''}`; clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove('show'), ms); }
 function ago(s) {
   if (!s) return 'todavía no';
   const x = Math.max(0, (Date.now() - new Date(s).getTime()) / 1000);
@@ -160,8 +160,8 @@ function form() {
     <input type="hidden" name="currency" value="${currency}">
     <div class="amount-card">
       <div class="amount-top"><span class="f-label">Importe ${usd ? 'en dólares' : 'en pesos'}</span>${withCat ? `<div class="seg seg-mini">${['ARS', 'USD'].map((c) => `<button type="button" data-cur="${c}" class="${currency === c ? 'on' : ''}">${c === 'ARS' ? 'Pesos' : 'Dólares'}</button>`).join('')}</div>` : ''}</div>
-      <div class="amount-line"><span class="amount-cur">${usd ? 'US$' : '$'}</span><input class="money" id="amount" name="amount" type="text" inputmode="decimal" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="0" value="${esc(d.amount ?? '')}" aria-label="Importe"></div>
-      ${usd ? `<div class="amount-rate"><span class="f-label">Tipo de cambio (pesos por dólar)</span><input class="input" id="exchangeRate" name="exchangeRate" type="text" inputmode="decimal" autocorrect="off" spellcheck="false" placeholder="Ej.: 1585" value="${esc(d.exchangeRate || '')}"><span class="hint" id="converted" aria-live="polite"></span></div>` : ''}
+      <div class="amount-line"><span class="amount-cur">${usd ? 'US$' : '$'}</span><input class="money" id="amount" name="amount" type="text" inputmode="decimal" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="0" value="${esc(formatAmountInput(d.amount ?? ''))}" aria-label="Importe"></div>
+      ${usd ? `<div class="amount-rate"><span class="f-label">Tipo de cambio (pesos por dólar)</span><input class="input" id="exchangeRate" name="exchangeRate" type="text" inputmode="decimal" autocorrect="off" spellcheck="false" placeholder="Ej.: 1585" value="${esc(formatAmountInput(d.exchangeRate || '', 6))}"><span class="hint" id="converted" aria-live="polite"></span></div>` : ''}
     </div>
     ${withCat ? field('Categoría', `${select('category', 'category', opts(cats, category))}${mode === 'Gasto' && !editing ? `<div class="chips sug">${suggestedCategories(book.rows, cats, today(), 4, frequent).map((c) => `<button type="button" class="opt sm ${c === category ? 'on' : ''}" data-cat="${esc(c)}">${esc(c)}</button>`).join('')}</div>` : ''}`) : ''}
     ${withCat ? field('Subcategoría <span class="opt-label">opcional</span>', select('subcategory', 'subcategory', `<option value="">Sin especificar</option>${sub.used.length ? `<optgroup label="Usadas con ${esc(category)}">${opts(sub.used, d.subcategory || '')}</optgroup><optgroup label="Otras">${opts(sub.rest, d.subcategory || '')}</optgroup>` : opts(sub.rest, d.subcategory || '')}`)) : ''}
@@ -414,12 +414,18 @@ document.addEventListener('submit', async (e) => {
   busy = true; $('#save').disabled = true;
   try { await save(e.target); } catch (err) { const el = $('#formError'); if (el) el.textContent = err.message; const s = $('#save'); if (s) s.disabled = false; } finally { busy = false; }
 });
-function cleanDecimalField(input) {
-  const raw = input.value, clean = normalizeDecimalInput(raw);
-  if (clean !== raw) { const st = input.selectionStart; input.value = clean; if (st != null) { const p = normalizeDecimalInput(raw.slice(0, st)).length; input.setSelectionRange(p, p); } }
+// Punto de miles automático mientras se escribe (1000 → 1.000), sin mover el cursor de lugar.
+function formatMoneyField(input) {
+  const raw = input.value, st = input.selectionStart ?? raw.length;
+  const before = raw.slice(0, st).replace(/[^\d,]/g, '').length;
+  const out = formatAmountInput(raw, input.id === 'exchangeRate' ? 6 : 2);
+  if (out === raw) return;
+  input.value = out;
+  const pos = caretAfterFormat(out, before);
+  try { input.setSelectionRange(pos, pos); } catch {}
 }
 document.addEventListener('input', (e) => {
-  if (['amount', 'exchangeRate'].includes(e.target.id)) { if (!e.isComposing) cleanDecimalField(e.target); updateConversion(); }
+  if (['amount', 'exchangeRate'].includes(e.target.id)) { if (!e.isComposing) formatMoneyField(e.target); updateConversion(); }
   if (e.target.id === 'q') { filters.q = e.target.value; clearTimeout(window.__qt); window.__qt = setTimeout(() => { const pos = e.target.selectionStart; renderNow(); const q = $('#q'); if (q) { q.focus(); q.setSelectionRange(pos, pos); } }, 250); }
 });
 document.addEventListener('change', (e) => {
