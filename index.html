@@ -16,6 +16,14 @@
   <!-- "default": la app no se dibuja debajo de la barra de estado (igual que Don Enrique) -->
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="format-detection" content="telephone=no">
+  <script>
+    // Android: sin "viewport-fit=cover" el navegador deja la app entre la barra de estado y la de navegación
+    // (algunos, como Samsung Internet, dibujan por debajo de las barras sin avisar cuánto tapan). En el iPhone se mantiene.
+    (function () {
+      var ios = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+      if (!ios) document.querySelector('meta[name=viewport]').setAttribute('content', 'width=device-width, initial-scale=1, maximum-scale=1');
+    })();
+  </script>
   <link rel="stylesheet" href="css/app.css">
 </head>
 <body>
