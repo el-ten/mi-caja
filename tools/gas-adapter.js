@@ -18,11 +18,14 @@ function doPost(e) {
   if (!token) return mcJson({ ok: false, error: 'Falta ejecutar "configurar" en Apps Script.', code: 'config' });
   var lock = null;
   try {
-    if (body && body.action === 'write' && body.token === token) {
+    if (body && body.token === token && body.action === 'write') {
       lock = LockService.getScriptLock();
       if (!lock.tryLock(30000)) return mcJson({ ok: false, error: 'La planilla está ocupada. Se reintenta solo.', code: 'busy' });
     }
-    return mcJson(coreHandle(mcDb(), body, token));
+    var db = mcDb(body && body.sheet);
+    // Al conectar, se comprueba que la planilla se pueda abrir y tenga las hojas de Mi Caja.
+    if (body && body.token === token && body.action === 'ping') db.check();
+    return mcJson(coreHandle(db, body, token));
   } catch (err) {
     return mcJson({ ok: false, error: String((err && err.message) || err), code: 'server' });
   } finally {
@@ -35,7 +38,8 @@ function configurar() {
   var p = PropertiesService.getScriptProperties();
   var t = p.getProperty('MC_TOKEN');
   if (!t) { t = Utilities.getUuid().replace(/-/g, '') + Utilities.getUuid().replace(/-/g, '').slice(0, 8); p.setProperty('MC_TOKEN', t); }
-  mcDb().mov(); // prueba de lectura (y pide los permisos la primera vez)
+  // Si el programa está dentro de la planilla, se prueba leerla. Si es un proyecto aparte, la planilla la indica la app.
+  if (SpreadsheetApp.getActiveSpreadsheet()) mcDb().mov();
   console.log('Clave de Mi Caja: ' + t);
   console.log('Ahora: Implementar → Nueva implementación → Aplicación web (Ejecutar como: yo · Acceso: cualquier persona).');
 }
@@ -43,12 +47,20 @@ function configurar() {
 // Si la clave se filtró: genera otra. Después hay que volver a conectar los celulares.
 function nuevaClave() { PropertiesService.getScriptProperties().deleteProperty('MC_TOKEN'); configurar(); }
 
-function mcDb() {
-  // Sirve pegado dentro de la planilla o como proyecto aparte (en ese caso abre la planilla por su ID).
+// Saca el ID de un link de Google Sheets (o acepta el ID solo).
+function mcSheetId(v) { var m = /\/d\/([a-zA-Z0-9_-]{20,})/.exec(String(v || '')); return m ? m[1] : (/^[a-zA-Z0-9_-]{20,}$/.test(String(v || '').trim()) ? String(v).trim() : ''); }
+
+function mcDb(sheetHint) {
+  // Qué planilla usar: 1) la que contiene este programa (Extensiones → Apps Script);
+  // 2) la que manda la app (link de la planilla, cuando el programa es un proyecto aparte); 3) la instalación original.
   var ss = SpreadsheetApp.getActiveSpreadsheet();
+  if (!ss && sheetHint) {
+    var id = mcSheetId(sheetHint);
+    try { ss = SpreadsheetApp.openById(id); } catch (e) { throw new Error('No pude abrir tu planilla: revisá el link que pegaste en la app.'); }
+  }
   if (!ss) {
     try { ss = SpreadsheetApp.openById(MC_PLANILLA); } catch (e) {
-      throw new Error('Este programa tiene que estar dentro de tu planilla: abrila y entrá por Extensiones → Apps Script.');
+      throw new Error('Falta indicar tu planilla: en la app, al conectar, pegá también el link de tu planilla.');
     }
   }
   var tz = ss.getSpreadsheetTimeZone();
@@ -76,6 +88,7 @@ function mcDb() {
     if (index == null) lista.push(guardada); else lista[index] = guardada;
   }
   return {
+    check: function () { for (var k in MC_HOJAS) hoja(k); },
     mov: function () { return filas('mov', 18); },
     aju: function () { return filas('aju', 7); },
     inicio: function () {

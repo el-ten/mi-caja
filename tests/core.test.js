@@ -135,5 +135,5 @@ test('saldo inicial: se carga como en la planilla histórica y suma al disponibl
   assert.deepEqual([row[3], row[4], row[5], row[6], row[13], row[14]], ['Saldo inicial', 'Saldo inicial', 'Banco', 'Saldo inicial', 'No aplica', 'Otro']);
   assert.equal(read(m).summary.cash, 13078028);
   assert.equal(write(m, [{ id: 'b', t: 'add', rec: { ...rec, id: uuid(), account: 'Tarjeta de crédito' } }]).results[0].ok, false);
-  assert.equal(read(m).serverVersion, 2);
+  assert.equal(read(m).serverVersion, 3);
 });

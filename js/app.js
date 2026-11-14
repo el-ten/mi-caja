@@ -4,11 +4,11 @@ import { sync, startAutoSync, isSyncing } from './sync.js';
 import { api, ServerError, resetDemo } from './api.js';
 import { buildBook, monthSummary, isCredit, EDITABLE_TYPES } from './book.js';
 import { formatAmountInput, caretAfterFormat, convertAmount, suggestedCategories, subcategoriesFor, money, centsToInput } from './ledger.js';
-import { makeCode, parseCode, validUrl } from './connect.js';
+import { makeCode, parseCode, validUrl, sheetId } from './connect.js';
 import { icon } from './icons.js';
 import { VERSION, VERSION_FECHA } from './version.js';
 
-const LATEST_SERVER = 2; // versión de gas/Code.gs que espera esta app (ver SERVER_VERSION en core.js)
+const LATEST_SERVER = 3; // versión de gas/Code.gs que espera esta app (ver SERVER_VERSION en core.js)
 
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -322,18 +322,21 @@ function connectForm() {
   <p class="w-note">o bien</p>
   ${field('Dirección de la aplicación web', '<input class="input" id="cUrl" type="url" placeholder="https://script.google.com/macros/s/…/exec" autocapitalize="off" autocorrect="off" spellcheck="false">')}
   ${field('Clave', '<input class="input" id="cTok" type="password" placeholder="La que muestra «configurar»" autocapitalize="off" autocorrect="off" spellcheck="false">')}
+  ${field('Link de tu planilla <span class="opt-label">si el programa lo creaste aparte</span>', '<input class="input" id="cSheet" type="url" placeholder="https://docs.google.com/spreadsheets/d/…" autocapitalize="off" autocorrect="off" spellcheck="false">')}
   <button class="btn btn-primary btn-block" type="submit">${icon('cloud', 20)} Conectar</button></form>`;
 }
 async function connect() {
   let cfg = parseCode($('#cCode').value);
-  if (!cfg && $('#cUrl').value.trim()) cfg = { url: $('#cUrl').value.trim(), token: $('#cTok').value.trim() };
+  if (!cfg && $('#cUrl').value.trim()) cfg = { url: $('#cUrl').value.trim(), token: $('#cTok').value.trim(), sheet: '' };
   if (!cfg || !cfg.token) { toast('Pegá el código completo, o la dirección y la clave.', 'warn'); return; }
+  const sheetRaw = ($('#cSheet') && $('#cSheet').value.trim()) || '';
+  if (sheetRaw) { cfg.sheet = sheetId(sheetRaw); if (!cfg.sheet) { toast('El link de la planilla no es válido. Copialo desde la barra de direcciones de tu planilla.', 'warn', 5000); return; } }
   if (!validUrl(cfg.url)) { toast('La dirección tiene que ser la de Apps Script y terminar en /exec.', 'warn', 5000); return; }
   toast('Probando la conexión…', 'info', 8000);
-  try { await api.ping({ url: cfg.url, token: cfg.token }); } catch (e) {
+  try { await api.ping({ url: cfg.url, token: cfg.token, sheet: cfg.sheet || '' }); } catch (e) {
     toast(e instanceof ServerError && e.code === 'auth' ? 'La clave no coincide. Revisala.' : `No pude conectar: ${e.message}`, 'err', 6000); return;
   }
-  await store.setConfig({ mode: 'live', url: cfg.url, token: cfg.token });
+  await store.setConfig({ mode: 'live', url: cfg.url, token: cfg.token, sheet: cfg.sheet || '' });
   page = 'home'; renderNow();
   const r = await sync();
   toast(r.ok ? 'Conectada. Tus datos ya están en el celular.' : r.error, r.ok ? 'ok' : 'warn', 5000);
@@ -410,7 +413,7 @@ document.addEventListener('click', async (e) => {
   if (b.id === 'more') { showCount += 200; renderNow(); return; }
   if (b.id === 'demo') { await store.setConfig({ mode: 'demo' }); page = 'home'; renderNow(); toast('Modo demo: nada de esto toca tu planilla', 'info'); await sync(); return; }
   if (b.id === 'demoReset') { if (!confirm('¿Borrar lo cargado en el modo demo y volver a los datos de ejemplo?')) return; for (const o of [...store.ops]) await store.discard(o.id); await store.setKV('mock:demo', null); resetDemo(); await sync(); toast('Datos de ejemplo restablecidos', 'ok'); return; }
-  if (b.id === 'copyCode') { const code = makeCode(store.config.url, store.config.token); try { await navigator.clipboard.writeText(code); toast('Código copiado. Pegalo en el otro celular.', 'ok'); } catch { prompt('Copiá este código:', code); } return; }
+  if (b.id === 'copyCode') { const code = makeCode(store.config.url, store.config.token, store.config.sheet); try { await navigator.clipboard.writeText(code); toast('Código copiado. Pegalo en el otro celular.', 'ok'); } catch { prompt('Copiá este código:', code); } return; }
   if (b.id === 'export') {
     const blob = new Blob([JSON.stringify({ app: 'Mi Caja', version: VERSION, exportedAt: new Date().toISOString(), pendientes: store.ops }, null, 2)], { type: 'application/json' });
     const u = URL.createObjectURL(blob), a = document.createElement('a'); a.href = u; a.download = `mi-caja-pendientes-${today()}.json`; a.click(); setTimeout(() => URL.revokeObjectURL(u), 1000); return;

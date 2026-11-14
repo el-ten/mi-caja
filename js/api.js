@@ -30,7 +30,7 @@ async function call(body, timeoutMs = 25000, override = null) {
   let res;
   try {
     // text/plain evita el "preflight" CORS, que Apps Script no responde.
-    res = await fetch(cfg.url, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ ...body, token: cfg.token }), redirect: 'follow', cache: 'no-store', signal: ctl.signal });
+    res = await fetch(cfg.url, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ ...body, token: cfg.token, sheet: cfg.sheet || undefined }), redirect: 'follow', cache: 'no-store', signal: ctl.signal });
   } catch (e) {
     const err = new NetworkError(e && e.name === 'AbortError' ? 'Tardó demasiado en responder' : 'Sin conexión');
     err.timeout = !!(e && e.name === 'AbortError');

@@ -90,3 +90,19 @@ test('Apps Script: clave incorrecta y sin configurar', () => {
   delete props.MC_TOKEN;
   assert.equal(JSON.parse(ctx.doPost({ postData: { contents: '{"action":"read"}' } }).s).code, 'config');
 });
+
+test('Apps Script como proyecto aparte: usa la planilla que manda la app', () => {
+  const sheets = book(); const { ctx, props } = load(sheets);
+  const opened = [];
+  ctx.SpreadsheetApp.getActiveSpreadsheet = () => null;
+  ctx.SpreadsheetApp.openById = (id) => { opened.push(id); if (id !== '19ZOX4Stajva1b-xgjk602fRN2cTslxJ-RVenh7FOqdo') throw new Error('sin permiso'); return { getSpreadsheetTimeZone: () => 'America/Argentina/Buenos_Aires', getSheetByName: (n) => sheets[n] || null }; };
+  const post = (body) => JSON.parse(ctx.doPost({ postData: { contents: JSON.stringify({ token: props.MC_TOKEN, ...body }) } }).s);
+  const link = 'https://docs.google.com/spreadsheets/d/19ZOX4Stajva1b-xgjk602fRN2cTslxJ-RVenh7FOqdo/edit?gid=0#gid=0';
+  assert.equal(post({ action: 'ping', sheet: link }).ok, true);
+  assert.equal(post({ action: 'read', sheet: link }).rows.length, 2);
+  const sin = post({ action: 'read' });
+  assert.equal(sin.ok, false); assert.match(sin.error, /link de tu planilla/);
+  const mal = post({ action: 'ping', sheet: 'https://docs.google.com/spreadsheets/d/OTRAplanillaQUEnoEXISTE123/edit' });
+  assert.equal(mal.ok, false); assert.match(mal.error, /No pude abrir tu planilla/);
+  assert.equal(opened[0], '19ZOX4Stajva1b-xgjk602fRN2cTslxJ-RVenh7FOqdo');
+});

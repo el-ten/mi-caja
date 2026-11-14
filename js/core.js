@@ -17,7 +17,7 @@
 
 const MC_TYPES = ['Gasto', 'Ingreso', 'Transferencia propia', 'Ajuste', 'Saldo inicial'];
 // Versión del programa de la planilla. Subirla cuando cambie algo que la app necesite: la app avisa si la planilla tiene una anterior.
-const SERVER_VERSION = 2;
+const SERVER_VERSION = 3;
 const EDITABLE = MC_TYPES;
 const CARD_NAME = 'Tarjeta de crédito';
 const SERIE = 'PER-2609';

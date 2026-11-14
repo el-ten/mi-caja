@@ -40,16 +40,20 @@
       <section class="sec">
         <h2 class="sec-title">2 · El programa de la planilla</h2>
         <div class="card gstep">
+          <p class="hint">En el celular, cada página de Google de este paso abrila en Safari con «aA» → «Solicitar sitio web de escritorio».</p>
           <ol class="glist">
-            <li>En <b>tu copia</b> de la planilla: menú <b>Extensiones → Apps Script</b>.</li>
-            <li>Si se abre un archivo <b>Código.gs</b> con mucho texto que empieza con «Mi Caja · servidor», ya está todo: pasá al punto 3. Si está casi vacío, borrá lo que tenga y pegá el código de este botón (mantené apretado → «Seleccionar todo» → «Copiar»), y tocá el ícono de guardar.
+            <li>Copiá el código: tocá el botón, mantené apretado sobre el texto → «Seleccionar todo» → «Copiar».
               <a class="btn btn-soft btn-block g-inline" href="https://raw.githubusercontent.com/el-ten/mi-caja/main/gas/Code.gs" target="_blank" rel="noopener">Ver el código para copiar</a></li>
+            <li>Creá el proyecto (con tu cuenta de Google):
+              <a class="btn btn-soft btn-block g-inline" href="https://script.google.com/create" target="_blank" rel="noopener">Crear proyecto en Apps Script</a>
+              Se abre con un poco de código de ejemplo: mantené apretado → «Seleccionar todo» → «Pegar», y tocá el ícono de guardar. Si querés, ponele de nombre «Mi Caja · servidor».</li>
             <li>Arriba, en el desplegable de funciones, elegí <b>configurar</b> → <b>Ejecutar</b>.</li>
             <li>Google pide permisos: <b>Revisar permisos</b> → tu cuenta → <b>Configuración avanzada</b> → <b>Ir a… (no seguro)</b> → <b>Permitir</b>. El aviso es normal: el programa es tuyo y no está publicado en ninguna tienda.</li>
             <li>Abajo, en el registro, aparece <b>«Clave de Mi Caja: …»</b>. Copiala y guardala un rato en Notas. <b>No se la pases a nadie.</b></li>
             <li><b>Implementar → Nueva implementación</b> → engranaje junto a «Seleccionar tipo» → <b>Aplicación web</b>. Ejecutar como: <b>Yo</b>. Quién tiene acceso: <b>Cualquier persona</b>. Tocá <b>Implementar</b> y copiá la <b>URL de la aplicación web</b> (termina en <code>/exec</code>).</li>
           </ol>
           <p class="hint">«Cualquier persona» es para que la app pueda llegar a tu planilla. Sin la clave nadie puede leer ni cargar nada.</p>
+          <p class="hint">Desde una computadora también podés hacerlo adentro de tu planilla (Extensiones → Apps Script); en ese caso, en el paso 3 el link de la planilla no hace falta.</p>
         </div>
       </section>
 
@@ -57,7 +61,8 @@
         <h2 class="sec-title">3 · La app</h2>
         <div class="card gstep">
           <ol class="glist">
-            <li>Abrí la app y tocá <b>«Conectar con mi planilla»</b>. Pegá la URL y la clave → <b>Conectar</b>.</li>
+            <li>Copiá el <b>link de tu planilla</b>: abrila y copiá la dirección de arriba (en la app de Hojas de cálculo: ⋯ → Compartir y exportar → Copiar vínculo).</li>
+            <li>Abrí la app y tocá <b>«Conectar con mi planilla»</b>. Pegá la URL del paso 2, la clave y el link de tu planilla → <b>Conectar</b>.</li>
             <li>Instalala: en el iPhone, Safari → Compartir → <b>«Añadir a pantalla de inicio»</b>. En Android, menú ⋮ → <b>«Instalar app»</b>.</li>
             <li>Primer paso adentro de la app: <b>cargá el saldo inicial</b> de cada cuenta (cuánta plata tenés hoy en el banco, en efectivo, en Mercado Pago…).</li>
           </ol>
@@ -78,7 +83,7 @@
         <div class="card gstep">
           <p class="prose">La app se actualiza sola. El programa de la planilla no: si alguna vez cambia, la app lo avisa en Ajustes. No es urgente.</p>
           <ol class="glist">
-            <li>Abrí tu planilla → <b>Extensiones → Apps Script</b>.</li>
+            <li>Abrí tu proyecto en <a href="https://script.google.com/home" target="_blank" rel="noopener">script.google.com</a> (o, si lo pusiste adentro de la planilla, Extensiones → Apps Script).</li>
             <li>Borrá todo el código y pegá el nuevo (mismo botón «Ver el código para copiar» de arriba). Guardá.</li>
             <li><b>Implementar → Gestionar implementaciones</b> → lápiz → Versión: <b>Nueva versión</b> → <b>Implementar</b>. La dirección y la clave no cambian.</li>
           </ol>
