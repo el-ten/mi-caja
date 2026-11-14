@@ -35,6 +35,10 @@
     </div>
     <button class="sync-pill" id="sync" type="button" hidden></button>
   </header>
+  <script>
+    // La barra de arriba queda fija (no rebota con el scroll del iPhone). Se mide su alto para dejarle lugar al contenido.
+    (function () { var a = document.getElementById('appbar'); if (!a) return; function m() { document.documentElement.style.setProperty('--appbar-h', a.offsetHeight + 'px'); } m(); addEventListener('resize', m); if (window.ResizeObserver) new ResizeObserver(m).observe(a); })();
+  </script>
   <div class="update-bar" id="update" hidden><span>Hay una versión nueva de Mi Caja.</span><button id="applyUpdate" type="button">Actualizar</button></div>
   <main id="view" tabindex="-1"></main>
   <nav class="tabbar" id="tabbar" aria-label="Secciones"></nav>

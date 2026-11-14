@@ -80,10 +80,12 @@ body {
   margin: 0; min-height: 100vh; min-height: 100dvh; background: var(--bg); color: var(--ink);
   font: 16px/1.4 var(--font); -webkit-font-smoothing: antialiased; -webkit-tap-highlight-color: transparent;
   overscroll-behavior-y: contain; padding-bottom: calc(var(--tab-h) + var(--sab) + 18px);
+  /* la barra de arriba es fija: el contenido arranca debajo (el alto real lo mide un script en index.html) */
+  padding-top: var(--appbar-h, calc(var(--sat) + 58px));
 }
 body.has-fab { padding-bottom: calc(var(--tab-h) + var(--sab) + 96px); }
 body.noscroll { overflow: hidden; }
-body.welcome { padding-bottom: 0; }
+body.welcome { padding-bottom: 0; padding-top: 0; }
 body.welcome .appbar, body.welcome .tabbar { display: none; }
 button { font: inherit; color: inherit; cursor: pointer; -webkit-appearance: none; appearance: none; border: 0; background: none; padding: 0; touch-action: manipulation; }
 button:disabled { cursor: default; }
@@ -108,7 +110,7 @@ body.sheet-full-open #edge-band { background-color: var(--surface); }
 
 /* ----- barra superior ----- */
 .appbar {
-  position: sticky; top: 0; z-index: 30; display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  position: fixed; top: 0; left: 0; right: 0; z-index: 30; display: flex; align-items: center; justify-content: space-between; gap: 10px;
   padding: calc(var(--sat) + 8px) calc(var(--sar) + 16px) 10px calc(var(--sal) + 16px);
   background: var(--green-d); color: var(--on-green);
 }
@@ -541,7 +543,7 @@ body.has-fab .toast-ok { bottom: calc(var(--tab-h) + var(--sab) + 80px); }
 .viewer img { max-width: 100%; height: auto; border-radius: 10px; box-shadow: var(--shadow); background: #fff; }
 
 /* =====================  Mi Caja  ===================== */
-.update-bar { position: sticky; top: calc(var(--sat) + 54px); z-index: 29; display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 16px; background: var(--gold-l); color: var(--ink); font-size: .9rem; font-weight: 600; border-bottom: 1px solid color-mix(in srgb, var(--gold) 40%, transparent); }
+.update-bar { position: sticky; top: var(--appbar-h, calc(var(--sat) + 58px)); z-index: 29; display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 16px; background: var(--gold-l); color: var(--ink); font-size: .9rem; font-weight: 600; border-bottom: 1px solid color-mix(in srgb, var(--gold) 40%, transparent); }
 .update-bar[hidden] { display: none; }
 .update-bar button { min-height: 38px; padding: 0 14px; border-radius: 12px; background: var(--gold); color: #2a1d00; font-weight: 700; }
 #view > .page { max-width: 720px; margin: 0 auto; }

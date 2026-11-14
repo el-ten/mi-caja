@@ -20,13 +20,17 @@
   <link rel="stylesheet" href="css/app.css">
 </head>
 <body class="guide">
-  <header class="appbar">
+  <header class="appbar" id="appbar">
     <div class="brand">
       <img class="logo-img" src="icons/icon-192.png" width="34" height="34" alt="">
       <div class="brand-text"><b>Mi Caja</b><small>Cómo empezar</small></div>
     </div>
     <a class="btn btn-sm guide-open" href="./">Abrir la app</a>
   </header>
+  <script>
+    // La barra de arriba queda fija (no rebota con el scroll del iPhone). Se mide su alto para dejarle lugar al contenido.
+    (function () { var a = document.getElementById('appbar'); if (!a) return; function m() { document.documentElement.style.setProperty('--appbar-h', a.offsetHeight + 'px'); } m(); addEventListener('resize', m); if (window.ResizeObserver) new ResizeObserver(m).observe(a); })();
+  </script>
   <main id="view">
     <div class="page">
       <div class="page-head"><div><h1>Mi Caja desde cero</h1><p>Unos 10 minutos, una sola vez</p></div></div>
