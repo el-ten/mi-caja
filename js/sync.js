@@ -6,7 +6,7 @@ import { api, NetworkError, ServerError } from './api.js';
 let running = null;
 let timer = null;
 
-const firma = (s) => (s ? JSON.stringify([s.rows, s.summary, s.catalog, s.avisos]) : '');
+const firma = (s) => (s ? JSON.stringify([s.rows, s.summary, s.catalog, s.avisos, s.serverVersion]) : '');
 export function isSyncing() { return !!running; }
 
 // En el iPhone el primer pedido al abrir la app a veces falla porque la conexión todavía no despertó.
@@ -49,7 +49,7 @@ export function sync({ quiet = false, minAge = 0 } = {}) {
         }
         // 2) bajar la planilla
         const raw = await api.read();
-        const snap = { at: new Date().toISOString(), rows: raw.rows || [], summary: raw.summary, catalog: raw.catalog, avisos: raw.avisos || [] };
+        const snap = { at: new Date().toISOString(), rows: raw.rows || [], summary: raw.summary, catalog: raw.catalog, avisos: raw.avisos || [], serverVersion: raw.serverVersion || 1 };
         await store.removeOps(okIds);
         if (silent && !okIds.length && firma(store.snapshot) === firma(snap)) await store.touchSync();
         else await store.saveSnapshot(snap);

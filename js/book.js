@@ -8,7 +8,7 @@ export const DEFAULT_CATALOG = {
   subcats: [],
 };
 
-export const EDITABLE_TYPES = ['Gasto', 'Ingreso', 'Transferencia propia', 'Ajuste'];
+export const EDITABLE_TYPES = ['Gasto', 'Ingreso', 'Transferencia propia', 'Ajuste', 'Saldo inicial'];
 
 export function buildBook(snapshot, ops) {
   const synced = (snapshot && snapshot.rows) || [];

@@ -63,6 +63,7 @@ const P = {
   out: '<path d="M7 7l10 10"/><path d="M17 9v8H9"/>',
   swap: '<path d="M4 8.5h15l-3.5-3.5"/><path d="M20 15.5H5l3.5 3.5"/>',
   start: '<path d="M5.5 21V4"/><path d="M5.5 4.5h12l-2.2 3.8 2.2 3.8h-12"/>',
+  book: '<path d="M4 5.5A2 2 0 0 1 6 3.5h5v16H6a2 2 0 0 0-2 2z"/><path d="M20 5.5a2 2 0 0 0-2-2h-5v16h5a2 2 0 0 1 2 2z"/>',
   wallet: '<path d="M4 7.5A2.5 2.5 0 0 1 6.5 5H17v3"/><path d="M4 7.5V17a2.5 2.5 0 0 0 2.5 2.5H20V8H6.5A2.5 2.5 0 0 1 4 5.5"/><path d="M16 13.8h.1"/>',
   card: '<rect x="3" y="5.5" width="18" height="13" rx="2"/><path d="M3 10h18M7 15h4"/>',
   piggy: '<path d="M5 11a6.5 5.5 0 0 1 12.5-2H19l-.5 2.5 1.5 1v3l-2 .5-1.5 2.5H15v-1.5h-4V19H9v-1.5A6 5.5 0 0 1 5 11z"/><path d="M5 11H3.5M10 7.5h3"/>',

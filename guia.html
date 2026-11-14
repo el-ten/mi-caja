@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="es-AR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Mi Caja · cómo empezar</title>
+  <meta name="description" content="Cómo instalar Mi Caja desde cero con tu propia planilla de Google.">
+  <meta name="theme-color" content="#0f3d2c">
+  <meta name="color-scheme" content="light dark">
+  <link rel="icon" type="image/png" href="icons/favicon-32.png">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <link rel="stylesheet" href="css/app.css">
+</head>
+<body class="guide">
+  <header class="appbar">
+    <div class="brand">
+      <img class="logo-img" src="icons/icon-192.png" width="34" height="34" alt="">
+      <div class="brand-text"><b>Mi Caja</b><small>Cómo empezar</small></div>
+    </div>
+    <a class="btn btn-sm guide-open" href="./">Abrir la app</a>
+  </header>
+  <main id="view">
+    <div class="page">
+      <div class="page-head"><div><h1>Mi Caja desde cero</h1><p>Unos 10 minutos, una sola vez</p></div></div>
+
+      <div class="card">
+        <p class="prose">Mi Caja guarda tus gastos e ingresos en <b>tu propia planilla de Google</b>, dentro de tu cuenta. Nadie más ve tus datos. La app la usás desde el celular, incluso sin señal, y se actualiza sola.</p>
+        <p class="hint">Necesitás una cuenta de Google (la de Gmail). Desde una computadora es más cómodo; desde el celular también se puede: en Safari tocá «aA» → «Solicitar sitio web de escritorio» (en Chrome de Android: menú ⋮ → «Sitio de escritorio»).</p>
+      </div>
+
+      <section class="sec">
+        <h2 class="sec-title">1 · Tu planilla</h2>
+        <div class="card gstep">
+          <p class="prose">Tocá el botón, después <b>«Hacer una copia»</b>. Queda en tu Google Drive con todas las hojas y categorías listas, vacía.</p>
+          <a class="btn btn-primary btn-block" href="https://docs.google.com/spreadsheets/d/19ZOX4Stajva1b-xgjk602fRN2cTslxJ-RVenh7FOqdo/copy" target="_blank" rel="noopener">Hacer mi copia de la planilla</a>
+          <p class="hint">Si querés, cambiale el nombre (por ejemplo «Mis finanzas»).</p>
+        </div>
+      </section>
+
+      <section class="sec">
+        <h2 class="sec-title">2 · El programa de la planilla</h2>
+        <div class="card gstep">
+          <ol class="glist">
+            <li>En <b>tu copia</b> de la planilla: menú <b>Extensiones → Apps Script</b>.</li>
+            <li>Si se abre un archivo <b>Código.gs</b> con mucho texto que empieza con «Mi Caja · servidor», ya está todo: pasá al punto 3. Si está casi vacío, borrá lo que tenga y pegá el código de este botón (mantené apretado → «Seleccionar todo» → «Copiar»), y tocá el ícono de guardar.
+              <a class="btn btn-soft btn-block g-inline" href="https://raw.githubusercontent.com/el-ten/mi-caja/main/gas/Code.gs" target="_blank" rel="noopener">Ver el código para copiar</a></li>
+            <li>Arriba, en el desplegable de funciones, elegí <b>configurar</b> → <b>Ejecutar</b>.</li>
+            <li>Google pide permisos: <b>Revisar permisos</b> → tu cuenta → <b>Configuración avanzada</b> → <b>Ir a… (no seguro)</b> → <b>Permitir</b>. El aviso es normal: el programa es tuyo y no está publicado en ninguna tienda.</li>
+            <li>Abajo, en el registro, aparece <b>«Clave de Mi Caja: …»</b>. Copiala y guardala un rato en Notas. <b>No se la pases a nadie.</b></li>
+            <li><b>Implementar → Nueva implementación</b> → engranaje junto a «Seleccionar tipo» → <b>Aplicación web</b>. Ejecutar como: <b>Yo</b>. Quién tiene acceso: <b>Cualquier persona</b>. Tocá <b>Implementar</b> y copiá la <b>URL de la aplicación web</b> (termina en <code>/exec</code>).</li>
+          </ol>
+          <p class="hint">«Cualquier persona» es para que la app pueda llegar a tu planilla. Sin la clave nadie puede leer ni cargar nada.</p>
+        </div>
+      </section>
+
+      <section class="sec">
+        <h2 class="sec-title">3 · La app</h2>
+        <div class="card gstep">
+          <ol class="glist">
+            <li>Abrí la app y tocá <b>«Conectar con mi planilla»</b>. Pegá la URL y la clave → <b>Conectar</b>.</li>
+            <li>Instalala: en el iPhone, Safari → Compartir → <b>«Añadir a pantalla de inicio»</b>. En Android, menú ⋮ → <b>«Instalar app»</b>.</li>
+            <li>Primer paso adentro de la app: <b>cargá el saldo inicial</b> de cada cuenta (cuánta plata tenés hoy en el banco, en efectivo, en Mercado Pago…).</li>
+          </ol>
+          <a class="btn btn-primary btn-block" href="./">Abrir Mi Caja</a>
+          <p class="hint">¿Querés usarla también en otro celular con la misma planilla? En la app: Ajustes → «Copiar código de conexión», y pegalo en el otro celular.</p>
+        </div>
+      </section>
+
+      <section class="sec">
+        <h2 class="sec-title">Para personalizar</h2>
+        <div class="card">
+          <p class="prose">Las cuentas y categorías salen de tu planilla: hojas <b>06_APP_CUENTAS</b> y <b>07_APP_CATEGORIAS</b>. Podés agregar, renombrar o desactivar (columna «Activa» en FALSE). La app las toma la próxima vez que se actualiza.</p>
+        </div>
+      </section>
+
+      <section class="sec" id="actualizar">
+        <h2 class="sec-title">Cuando la app pida actualizar el programa</h2>
+        <div class="card gstep">
+          <p class="prose">La app se actualiza sola. El programa de la planilla no: si alguna vez cambia, la app lo avisa en Ajustes. No es urgente.</p>
+          <ol class="glist">
+            <li>Abrí tu planilla → <b>Extensiones → Apps Script</b>.</li>
+            <li>Borrá todo el código y pegá el nuevo (mismo botón «Ver el código para copiar» de arriba). Guardá.</li>
+            <li><b>Implementar → Gestionar implementaciones</b> → lápiz → Versión: <b>Nueva versión</b> → <b>Implementar</b>. La dirección y la clave no cambian.</li>
+          </ol>
+        </div>
+      </section>
+
+      <p class="version">Mi Caja · finanzas personales</p>
+    </div>
+  </main>
+</body>
+</html>

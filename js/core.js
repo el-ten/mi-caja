@@ -15,7 +15,9 @@
 //   getProp(k), setProp(k, v): memoria chica del servidor (para no duplicar ajustes)
 // }
 
-const MC_TYPES = ['Gasto', 'Ingreso', 'Transferencia propia', 'Ajuste'];
+const MC_TYPES = ['Gasto', 'Ingreso', 'Transferencia propia', 'Ajuste', 'Saldo inicial'];
+// Versión del programa de la planilla. Subirla cuando cambie algo que la app necesite: la app avisa si la planilla tiene una anterior.
+const SERVER_VERSION = 2;
 const EDITABLE = MC_TYPES;
 const CARD_NAME = 'Tarjeta de crédito';
 const SERIE = 'PER-2609';
@@ -111,7 +113,7 @@ function coreRead(db) {
   if (ini && [ini[2], ini[3], ini[4]].every((v) => Number.isFinite(coreNum(v)))) {
     summary = { month: coreIso(ini[1]).slice(0, 7), cash: coreCents(ini[2]), income: coreCents(ini[3]), expense: coreCents(ini[4]), adjustments: coreCents(ini[5]) || 0, result: coreCents(ini[6]) || 0 };
   } else avisos.push('No se pudo leer el resumen de 05_APP_INICIO (fila INICIO).');
-  return { ok: true, rows, summary, catalog: coreCatalog(db), avisos, serverTime: new Date().toISOString() };
+  return { ok: true, rows, summary, catalog: coreCatalog(db), avisos, serverVersion: SERVER_VERSION, serverTime: new Date().toISOString() };
 }
 // uuid -> id visible guardado por el servidor, invertido (id visible -> uuid)
 function coreAjuUuidsById(db) { const m = coreAjuUuids(db), out = {}; for (const k in m) out[m[k]] = k; return out; }
@@ -160,6 +162,11 @@ function coreNormalize(rec, cat, opts) {
     if (credit.includes(account)) fail('La cuenta de origen no puede ser la tarjeta.');
     if (!accNames.includes(out.destination) || out.destination === account) fail('Elegí una cuenta destino distinta.');
     out.category = ''; out.subcategory = ''; out.frequency = ''; out.priority = 'No aplica'; out.payment = 'Transferencia'; out.direction = '';
+  } else if (out.type === 'Saldo inicial') {
+    // Lo que había en cada cuenta al empezar a usar Mi Caja (mismo formato que los saldos iniciales históricos).
+    if (credit.includes(account)) fail('El saldo inicial va en una cuenta con dinero, no en la tarjeta.');
+    out.category = 'Saldo inicial'; out.subcategory = account; out.frequency = ''; out.priority = 'No aplica'; out.payment = 'Otro'; out.destination = ''; out.direction = '';
+    if (!out.description) out.description = 'Saldo inicial';
   } else {
     if (!['Faltante', 'Sobrante'].includes(out.direction)) fail('Elegí faltante o sobrante.');
     out.category = ''; out.subcategory = ''; out.frequency = ''; out.priority = ''; out.payment = ''; out.destination = '';
@@ -262,12 +269,12 @@ function coreEdit(db, cat, op) {
 function coreHandle(db, body, token) {
   if (!body || typeof body !== 'object') return { ok: false, error: 'Pedido inválido.', code: 'bad' };
   if (!token || body.token !== token) return { ok: false, error: 'Clave incorrecta.', code: 'auth' };
-  if (body.action === 'ping') return { ok: true, app: 'mi-caja', serverTime: new Date().toISOString() };
+  if (body.action === 'ping') return { ok: true, app: 'mi-caja', serverVersion: SERVER_VERSION, serverTime: new Date().toISOString() };
   if (body.action === 'read') return coreRead(db);
   if (body.action === 'write') { if (!Array.isArray(body.ops) || body.ops.length > 100) return { ok: false, error: 'Lote inválido.', code: 'bad' }; return coreWrite(db, body.ops); }
   return { ok: false, error: 'Acción desconocida.', code: 'bad' };
 }
 
 /* EXPORTS:BEGIN */
-export { coreHandle, coreRead, coreWrite, coreNormalize, coreCatalog, coreFingerprint, coreSerial, coreIso, coreMovRow, coreNextId, F_PERIODO, F_IMPORTE, SERIE, SERIE_AJU, CARD_NAME };
+export { SERVER_VERSION, coreHandle, coreRead, coreWrite, coreNormalize, coreCatalog, coreFingerprint, coreSerial, coreIso, coreMovRow, coreNextId, F_PERIODO, F_IMPORTE, SERIE, SERIE_AJU, CARD_NAME };
 /* EXPORTS:END */

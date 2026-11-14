@@ -2,7 +2,9 @@
 // Pasos (una sola vez): abrir el proyecto "Mi Caja · servidor" en script.google.com (o pegar este archivo en Extensiones → Apps Script), ejecutar "configurar",
 // e Implementar → Nueva implementación → Aplicación web (Ejecutar como: yo · Acceso: cualquier persona).
 
-var MC_PLANILLA = '1QIixkftqfa8VzWSS3EiCBYFAnO_cSU1UcbyhQLHtaLM'; // "Finanzas personales (Agustín Marconato)"
+// Solo para la instalación original (proyecto aparte, no pegado dentro de la planilla). Las copias de la
+// planilla modelo usan su propio programa desde Extensiones → Apps Script y no necesitan esto.
+var MC_PLANILLA = '1QIixkftqfa8VzWSS3EiCBYFAnO_cSU1UcbyhQLHtaLM';
 var MC_HOJAS = { mov: '01_MOVIMIENTOS', conf: '03_CONFIGURACION', aju: '04_APP_AJUSTES', ini: '05_APP_INICIO', cue: '06_APP_CUENTAS', cat: '07_APP_CATEGORIAS' };
 
 function mcJson(o) { return ContentService.createTextOutput(JSON.stringify(o)).setMimeType(ContentService.MimeType.JSON); }
@@ -43,7 +45,12 @@ function nuevaClave() { PropertiesService.getScriptProperties().deleteProperty('
 
 function mcDb() {
   // Sirve pegado dentro de la planilla o como proyecto aparte (en ese caso abre la planilla por su ID).
-  var ss = SpreadsheetApp.getActiveSpreadsheet() || SpreadsheetApp.openById(MC_PLANILLA);
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  if (!ss) {
+    try { ss = SpreadsheetApp.openById(MC_PLANILLA); } catch (e) {
+      throw new Error('Este programa tiene que estar dentro de tu planilla: abrila y entrá por Extensiones → Apps Script.');
+    }
+  }
   var tz = ss.getSpreadsheetTimeZone();
   var cache = {};
   function hoja(k) { var h = ss.getSheetByName(MC_HOJAS[k]); if (!h) throw new Error('No encuentro la hoja ' + MC_HOJAS[k]); return h; }

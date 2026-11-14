@@ -8,6 +8,8 @@ import { makeCode, parseCode, validUrl } from './connect.js';
 import { icon } from './icons.js';
 import { VERSION, VERSION_FECHA } from './version.js';
 
+const LATEST_SERVER = 2; // versión de gas/Code.gs que espera esta app (ver SERVER_VERSION en core.js)
+
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const iso = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
@@ -119,6 +121,7 @@ function home() {
     <button type="button" class="q" data-new="Transferencia propia"><span class="q-ic q-mid">${icon('swap', 24)}</span>Transferir</button>
     <button type="button" class="q" data-new="Ajuste"><span class="q-ic q-adj">${icon('scale', 24)}</span>Diferencia de caja</button>
   </div>
+  ${!book.rows.length && store.snapshot ? `<button type="button" class="note note-btn" data-new="Saldo inicial">${icon('wallet', 20)}<span><b>Primer paso:</b> cargá cuánta plata tenés hoy en cada cuenta.</span>${icon('right', 18)}</button>` : ''}
   ${installNudge()}
   <section class="sec"><div class="sec-head"><h2 class="sec-title">Últimos movimientos</h2>${book.rows.length > 6 ? '<button type="button" class="link" data-page="history">Ver todos</button>' : ''}</div>
   <div class="list">${book.rows.slice(0, 6).map(movCard).join('') || emptyState('wallet', 'Sin movimientos', 'Cargá tu primer gasto con los botones de arriba.')}</div></section>
@@ -137,7 +140,7 @@ function catList(type) { return book.catalog.categories.filter((c) => c.type ===
 function defaultPayment(a) { if (mode === 'Ingreso') return a === 'Efectivo' ? 'Efectivo' : 'Transferencia'; return isCredit(book.catalog, a) ? 'Crédito' : a === 'Efectivo' ? 'Efectivo' : a === 'Mercado Pago' ? 'QR' : 'Débito'; }
 function form() {
   const d = draft, cat = book.catalog;
-  const transfer = mode === 'Transferencia propia', adjust = mode === 'Ajuste', withCat = !transfer && !adjust;
+  const transfer = mode === 'Transferencia propia', adjust = mode === 'Ajuste', start = mode === 'Saldo inicial', withCat = !transfer && !adjust && !start;
   const accounts = cat.accounts.map((a) => a.name);
   const fromAccounts = mode === 'Gasto' ? accounts : accounts.filter((a) => !isCredit(cat, a));
   const account = d.account && (fromAccounts.includes(d.account) || editing) ? d.account : fromAccounts[0];
@@ -153,11 +156,12 @@ function form() {
   const payment = credit && mode === 'Gasto' ? 'Crédito' : (d.payment && payments.includes(d.payment) ? d.payment : defaultPayment(account));
   const prio = d.priority ?? ((cat.categories.find((c) => c.name === category) || {}).priority || '');
   const date = d.date || today();
-  const titles = { Gasto: 'Nuevo gasto', Ingreso: 'Nuevo ingreso', 'Transferencia propia': 'Transferencia entre cuentas', Ajuste: 'Diferencia de caja' };
+  const titles = { Gasto: 'Nuevo gasto', Ingreso: 'Nuevo ingreso', 'Transferencia propia': 'Transferencia entre cuentas', Ajuste: 'Diferencia de caja', 'Saldo inicial': 'Saldo inicial de una cuenta' };
   const dest = d.destination && d.destination !== account ? d.destination : accounts.find((a) => a !== account && isCredit(cat, a)) || accounts.find((a) => a !== account);
   return `<div class="page">
   <div class="page-head"><div><h1>${editing ? 'Corregir' : 'Cargar'}</h1><p>${editing ? (editing.kind === 'synced' ? `${esc(editing.displayId || '')} · conserva su número en la planilla` : 'Todavía no se envió') : titles[mode]}</p></div></div>
-  ${!editing ? `<div class="seg" role="tablist">${[['Gasto', 'Gasto'], ['Ingreso', 'Ingreso'], ['Transferencia propia', 'Transferir'], ['Ajuste', 'Ajuste']].map(([t, l]) => `<button type="button" role="tab" aria-selected="${mode === t}" data-mode="${t}" class="${mode === t ? 'on' : ''}">${l}</button>`).join('')}</div>` : ''}
+  ${start && !editing ? `<div class="note">${icon('wallet', 20)}<span>Cargá cuánta plata tenés hoy en cada cuenta (una carga por cuenta). Es el punto de partida del saldo disponible.</span></div>` : ''}
+  ${!editing && !start ? `<div class="seg" role="tablist">${[['Gasto', 'Gasto'], ['Ingreso', 'Ingreso'], ['Transferencia propia', 'Transferir'], ['Ajuste', 'Ajuste']].map(([t, l]) => `<button type="button" role="tab" aria-selected="${mode === t}" data-mode="${t}" class="${mode === t ? 'on' : ''}">${l}</button>`).join('')}</div>` : ''}
   <form id="entry" class="form" autocomplete="off" novalidate>
     <input type="hidden" name="currency" value="${currency}">
     <div class="amount-card">
@@ -168,11 +172,11 @@ function form() {
     ${withCat ? field('Categoría', `${select('category', 'category', opts(cats, category))}${mode === 'Gasto' && !editing ? `<div class="chips sug">${suggestedCategories(book.rows, cats, today(), 4, frequent).map((c) => `<button type="button" class="opt sm ${c === category ? 'on' : ''}" data-cat="${esc(c)}">${esc(c)}</button>`).join('')}</div>` : ''}`) : ''}
     ${withCat ? field('Subcategoría <span class="opt-label">opcional</span>', select('subcategory', 'subcategory', `<option value="">Sin especificar</option>${sub.used.length ? `<optgroup label="Usadas con ${esc(category)}">${opts(sub.used, d.subcategory || '')}</optgroup><optgroup label="Otras">${opts(sub.rest, d.subcategory || '')}</optgroup>` : opts(sub.rest, d.subcategory || '')}`)) : ''}
     ${adjust ? field('Diferencia', `<div class="chips">${['Faltante', 'Sobrante'].map((v) => `<button type="button" class="opt ${(d.direction || 'Faltante') === v ? 'on' : ''}" data-dir="${v}">${v === 'Faltante' ? 'Falta plata' : 'Sobra plata'}</button>`).join('')}</div><input type="hidden" name="direction" value="${esc(d.direction || 'Faltante')}"><span class="hint">Para cuando contás la plata y no coincide con lo registrado. No suma a los gastos.</span>`) : ''}
-    ${field(transfer ? 'Desde' : 'Cuenta / medio', select('account', 'account', opts(editing && !fromAccounts.includes(account) ? [account, ...fromAccounts] : fromAccounts, account)))}
+    ${field(transfer ? 'Desde' : start ? 'Cuenta' : 'Cuenta / medio', select('account', 'account', opts(editing && !fromAccounts.includes(account) ? [account, ...fromAccounts] : fromAccounts, account)))}
     ${transfer ? field('Hacia', `${select('destination', 'destination', opts(accounts.filter((a) => a !== account), dest))}<span class="hint">Pagar el resumen de la tarjeta es una transferencia hacia la tarjeta: baja tu disponible sin sumar otro gasto.</span>`) : ''}
     ${withCat ? (credit && mode === 'Gasto' ? `<div class="note">${icon('card', 20)}<span>Compra con tarjeta: cuenta como gasto del mes, pero no baja tu disponible hasta que pagues el resumen.</span></div><input type="hidden" name="payment" value="Crédito">`
       : field('Forma de pago', `<div class="chips">${payments.map((p) => `<button type="button" class="opt sm ${p === payment ? 'on' : ''}" data-pay="${esc(p)}">${esc(p)}</button>`).join('')}</div><input type="hidden" name="payment" value="${esc(payment)}">`)) : ''}
-    ${field('Descripción <span class="opt-label">opcional</span>', `<input class="input" name="description" id="description" maxlength="240" placeholder="¿En qué fue?" value="${esc(d.description || '')}">`)}
+    ${field('Descripción <span class="opt-label">opcional</span>', `<input class="input" name="description" id="description" maxlength="240" placeholder="${start ? 'Saldo inicial' : '¿En qué fue?'}" value="${esc(d.description || '')}">`)}
     <p class="f-section">Datos adicionales</p>
     ${field('Fecha', `<div class="input pick-wrap"><span class="pick-shown">${date === today() ? 'Hoy · ' : ''}${shortDate(date)}</span>${icon('calendar', 20)}<input class="pick-native" type="date" id="date" name="date" value="${esc(date)}" max="${today()}" aria-label="Fecha"></div>`)}
     ${mode === 'Gasto' ? `<div class="row-2">${field('Fijo / variable', select('frequency', 'frequency', opts(['Variable', 'Fijo'], d.frequency || 'Variable')))}${field('Prioridad', select('priority', 'priority', `<option value="">Sin especificar</option>${opts(['Necesario', 'Discrecional', 'No aplica'], prio)}`))}</div>` : ''}
@@ -207,6 +211,7 @@ async function save(f) {
     payment: mode === 'Transferencia propia' ? 'Transferencia' : d.payment || '', frequency: mode === 'Gasto' ? d.frequency || 'Variable' : '',
     priority: mode === 'Gasto' ? d.priority || '' : mode === 'Transferencia propia' ? 'No aplica' : '', destination: d.destination || '', direction: d.direction || '',
   };
+  if (mode === 'Saldo inicial') Object.assign(rec, { category: 'Saldo inicial', subcategory: d.account, payment: 'Otro', priority: 'No aplica', description: rec.description || 'Saldo inicial' });
   if (!editing) await store.enqueue({ t: 'add', rec });
   else if (editing.kind === 'op') {
     const op = store.ops.find((o) => o.id === editing.opId);
@@ -284,6 +289,7 @@ function settings() {
     <div class="conn-row"><span class="dot dot-${m === 'demo' ? 'demo' : store.online ? 'ok' : 'off'}"></span><div class="grow"><b>${m === 'live' ? 'Conectada a tu planilla' : 'Modo demo (datos de ejemplo)'}</b><div class="sub">${store.online ? 'Con señal' : 'Sin señal'} · última sincronización ${ago(store.sync.lastSync)}</div></div></div>
     ${store.sync.error ? `<div class="note ${store.sync.offline ? 'note-warn' : 'note-err'}">${icon('alert', 20)}<span>${esc(store.sync.error)}</span></div>` : ''}
     ${avisos.map((a) => `<div class="note note-warn">${icon('alert', 20)}<span>La planilla avisa: ${esc(a)}</span></div>`).join('')}
+    ${m === 'live' && store.snapshot && (store.snapshot.serverVersion || 1) < LATEST_SERVER ? `<a class="note note-btn" href="guia.html#actualizar">${icon('refresh', 20)}<span>Hay una versión nueva del programa de la planilla. No es urgente: actualizalo cuando puedas.</span>${icon('right', 18)}</a>` : ''}
     <button class="btn btn-primary btn-lg btn-block" id="syncNow" type="button" ${isSyncing() ? 'disabled' : ''}>${icon('refresh', 20, isSyncing() ? 'spin' : '')} ${isSyncing() ? 'Sincronizando…' : 'Sincronizar ahora'}</button>
     <p class="hint">Lo que cargás se envía solo: al guardar, al volver la señal y cada vez que abrís la app. En el iPhone no puede enviar con la app cerrada.</p>
   </div>
@@ -295,9 +301,11 @@ function settings() {
   <section class="sec"><h2 class="sec-title">Atajos</h2><div class="tiles">
     <button type="button" class="tile tile-blue" data-new="Transferencia propia"><span class="tile-ic">${icon('swap', 26)}</span><b>Transferir</b><small>Entre cuentas o pagar la tarjeta</small></button>
     <button type="button" class="tile tile-gold" data-new="Ajuste"><span class="tile-ic">${icon('scale', 26)}</span><b>Diferencia de caja</b><small>Faltantes o sobrantes al contar</small></button>
+    <button type="button" class="tile tile-green" data-new="Saldo inicial"><span class="tile-ic">${icon('wallet', 26)}</span><b>Saldo inicial</b><small>Lo que había en una cuenta al empezar</small></button>
+    <a class="tile tile-earth" href="guia.html"><span class="tile-ic">${icon('share', 26)}</span><b>Pasársela a alguien</b><small>Guía para instalarla desde cero</small></a>
   </div></section>
   <section class="sec"><h2 class="sec-title">Conexión con la planilla</h2><div class="card">
-    ${m === 'live' ? `<p class="prose">Para usar Mi Caja en otro celular (por ejemplo el de tu mamá), copiá este código y pegalo allá en "Conectar con mi planilla".</p><button class="btn btn-soft btn-block" id="copyCode" type="button">${icon('copy', 20)} Copiar código de conexión</button>` : '<p class="prose">Estás en modo demo. Cuando tengas el servidor instalado en la planilla, conectala acá: lo del modo demo queda aparte.</p>'}
+    ${m === 'live' ? `<p class="prose">Para cargar en esta misma planilla desde otro celular, copiá este código y pegalo allá en "Conectar con mi planilla".</p><button class="btn btn-soft btn-block" id="copyCode" type="button">${icon('copy', 20)} Copiar código de conexión</button>` : '<p class="prose">Estás en modo demo. Cuando tengas el servidor instalado en la planilla, conectala acá: lo del modo demo queda aparte.</p>'}
     <details class="adv" ${m !== 'live' ? 'open' : ''}><summary>${m === 'live' ? 'Cambiar conexión' : 'Conectar con mi planilla real'}</summary>${connectForm()}</details>
     ${m === 'demo' ? `<label class="check"><input type="checkbox" id="demoOffline" ${store.demoOffline ? 'checked' : ''}> Simular "sin señal" para probar</label><button class="btn btn-ghost btn-sm" id="demoReset" type="button">${icon('undo', 18)} Volver a los datos de ejemplo</button>` : ''}
   </div></section>
@@ -340,6 +348,7 @@ function welcome() {
     <div class="connect-panel" ${connectOpen ? '' : 'hidden'}>${connectForm()}</div>
     <button class="btn btn-ghost btn-lg btn-block" id="demo" type="button">${icon('sparkle', 20)} Probar con datos de ejemplo</button>
     <p class="w-note">Los datos de ejemplo son inventados. No se mezclan con tu planilla real.</p>
+    <a class="btn btn-ghost btn-block" href="guia.html">${icon('book', 20)} ¿Primera vez? Cómo instalarla</a>
   </div></div>`;
 }
 

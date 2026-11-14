@@ -92,7 +92,9 @@ test('corregir un movimiento histórico (sin ID interno) por su número', () => 
   assert.equal(res.results[0].ok, true, res.results[0].error);
   assert.equal(m.state.mov[5][6], 'Nafta YPF');
   const si = read(m).rows.find((r) => r.type === 'Saldo inicial');
-  assert.equal(write(m, [{ id: 'x', t: 'edit', key: si.id, prev: si, rec: { ...si, description: 'x' } }]).results[0].ok, false);
+  // los saldos iniciales ahora también se pueden corregir desde la app
+  assert.equal(write(m, [{ id: 'x', t: 'edit', key: si.id, prev: si, rec: { ...si, description: 'Saldo banco' } }]).results[0].ok, true);
+  assert.equal(m.state.mov[0][6], 'Saldo banco');
 });
 
 test('una fila rota en la planilla no impide leer el resto', () => {
@@ -121,4 +123,17 @@ test('un pendiente corregido antes de recibir la confirmación se actualiza, no 
   assert.equal(r.results[0].repeated, true);
   const rows = m.state.mov.filter((x) => x[17] === rec.id);
   assert.equal(rows.length, 1); assert.equal(rows[0][6], 'Corregido'); assert.equal(rows[0][11], 999);
+});
+
+test('saldo inicial: se carga como en la planilla histórica y suma al disponible', () => {
+  const m = createMock({ mov: [], aju: [], props: {} }, { now: () => NOW });
+  assert.equal(read(m).summary.cash, 0);
+  const rec = { id: uuid(), type: 'Saldo inicial', date: '2026-11-11', account: 'Banco', currency: 'ARS', originalCents: 13078028, cents: 13078028, description: '' };
+  const r = write(m, [{ id: 'a', t: 'add', rec }]);
+  assert.equal(r.results[0].ok, true, r.results[0].error); assert.equal(r.results[0].assigned, 'PER-2609-001');
+  const row = m.state.mov[0];
+  assert.deepEqual([row[3], row[4], row[5], row[6], row[13], row[14]], ['Saldo inicial', 'Saldo inicial', 'Banco', 'Saldo inicial', 'No aplica', 'Otro']);
+  assert.equal(read(m).summary.cash, 13078028);
+  assert.equal(write(m, [{ id: 'b', t: 'add', rec: { ...rec, id: uuid(), account: 'Tarjeta de crédito' } }]).results[0].ok, false);
+  assert.equal(read(m).serverVersion, 2);
 });

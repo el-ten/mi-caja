@@ -7,6 +7,13 @@ Registro personal de gastos e ingresos. App instalable (PWA) que funciona sin se
 - **Servidor**: `gas/Code.gs`, pegado en Apps Script dentro de la planilla. Lee y escribe la planilla con una clave.
 - **Sin señal**: lo cargado queda en el celular (IndexedDB) y se envía solo cuando vuelve la conexión.
 
+## Para otra persona (desde cero)
+
+Mandarle https://el-ten.github.io/mi-caja/guia.html. Hace una copia de la planilla modelo
+("Mi Caja · planilla modelo", vacía), instala el programa en su copia y conecta la app. Sus datos quedan en su
+cuenta de Google. La app es la misma para todos: lo que se publica acá le llega a todos.
+Si cambia `gas/Code.gs`, subir `SERVER_VERSION` en `js/core.js` y `LATEST_SERVER` en `js/app.js`: la app avisa en Ajustes.
+
 ## Instalar el servidor (una sola vez, mejor desde una computadora)
 
 1. Abrir la planilla → **Extensiones → Apps Script**.

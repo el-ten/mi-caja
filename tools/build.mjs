@@ -17,7 +17,7 @@ writeFileSync(join(root, 'gas/Code.gs'), gs);
 const files = [];
 const walk = (d) => { for (const n of readdirSync(join(root, d))) { const p = d ? `${d}/${n}` : n; if (statSync(join(root, p)).isDirectory()) walk(p); else files.push(p); } };
 for (const d of ['css', 'js', 'icons']) walk(d);
-files.push('index.html', 'manifest.webmanifest');
+files.push('index.html', 'guia.html', 'manifest.webmanifest');
 files.sort();
 const h = createHash('sha256');
 for (const f of files) h.update(f).update(readFileSync(join(root, f)));

@@ -633,3 +633,17 @@ body.has-fab .toast-ok { bottom: calc(var(--tab-h) + var(--sab) + 80px); }
 .fpill .ftext { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 14px; font-weight: 650; color: var(--ink); }
 .fpill .fnative { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; font-size: 16px; -webkit-appearance: none; appearance: none; border: 0; cursor: pointer; }
 .fpill:focus-within { box-shadow: 0 0 0 3px color-mix(in srgb, var(--green) 25%, transparent); }
+
+a.tile, a.note, a.btn { text-decoration: none; }
+a.tile { color: var(--ink); }
+a.note-btn { color: inherit; }
+
+/* guía de instalación (guia.html) */
+body.guide { padding-bottom: calc(var(--sab) + 24px); }
+.logo-img { width: 34px; height: 34px; border-radius: 9px; display: block; }
+.guide-open { background: rgba(255, 255, 255, .12); color: #fff; border: 1px solid rgba(255, 255, 255, .22); min-height: 38px; padding: 0 14px; border-radius: 999px; }
+.gstep { gap: 12px; }
+.glist { margin: 0; padding-left: 22px; display: flex; flex-direction: column; gap: 12px; color: var(--ink-2); line-height: 1.5; }
+.glist li::marker { color: var(--green); font-weight: 700; }
+.g-inline { margin-top: 10px; }
+.guide code { font-size: .9em; background: var(--surface-2, rgba(0,0,0,.05)); padding: 1px 5px; border-radius: 6px; }
