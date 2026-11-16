@@ -370,6 +370,7 @@ function renderNow() {
   document.body.classList.remove('welcome');
   $('#view').innerHTML = page === 'home' ? home() : page === 'form' ? form() : page === 'history' ? history() : settings();
   $('#tabbar').querySelectorAll('button').forEach((b) => b.setAttribute('aria-current', String(b.dataset.page === page)));
+  placeGlider();
   const r = detailId && book.rows.find((x) => x.id === detailId);
   $('#overlay').innerHTML = r ? detail(r) : '';
   document.body.classList.toggle('noscroll', !!r);
@@ -481,10 +482,28 @@ function registerSW() {
   navigator.serviceWorker.addEventListener('controllerchange', () => { if (!hadController || reloaded) return; reloaded = true; location.reload(); });
 }
 
+// Cápsula de la pestaña activa: se desliza de una pestaña a la otra
+let glider = null;
+function placeGlider(instant) {
+  if (!glider) return;
+  const on = $('#tabbar').querySelector('button[aria-current="true"]');
+  if (!on || !on.offsetWidth) { glider.classList.add('off'); return; }
+  const jump = instant || glider.classList.contains('off') || !glider.dataset.placed;
+  if (jump) glider.classList.add('jump');
+  glider.style.setProperty('--gx', (on.offsetLeft - 4) + 'px');
+  glider.style.setProperty('--gw', (on.offsetWidth + 8) + 'px');
+  glider.classList.remove('off');
+  glider.dataset.placed = '1';
+  if (jump) { void glider.offsetWidth; glider.classList.remove('jump'); }
+}
+
 async function boot() {
   $('#brandLogo').innerHTML = logoSvg('lg', 34);
   $('#tabbar').innerHTML = [['home', 'Inicio', 'home'], ['form', 'Cargar', 'plus'], ['history', 'Movimientos', 'list'], ['settings', 'Ajustes', 'gear']]
     .map(([p, l, ic]) => `<button type="button" data-page="${p}">${icon(ic, 24)}<span>${l}</span></button>`).join('');
+  glider = document.createElement('span'); glider.className = 'tab-glider off'; glider.setAttribute('aria-hidden', 'true');
+  $('#tabbar').prepend(glider);
+  if (typeof ResizeObserver !== 'undefined') new ResizeObserver(() => placeGlider(true)).observe($('#tabbar'));
   try { await store.init(); } catch { $('#view').innerHTML = '<div class="page"><h1>No se pudo abrir el almacenamiento</h1><p>Mi Caja necesita permiso para guardar datos en este navegador.</p></div>'; return; }
   store.subscribe(safeRender);
   renderNow();
