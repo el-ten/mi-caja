@@ -140,7 +140,7 @@ body.sheet-full-open #edge-band { background-color: var(--surface); }
 /* ----- barra inferior (efecto vidrio) ----- */
 .tabbar {
   position: fixed; left: calc(var(--sal) + 14px); right: calc(var(--sar) + 14px); bottom: calc(var(--sab) + 8px); z-index: 40;
-  display: flex; justify-content: space-around; padding: 5px; border-radius: 32px;
+  display: flex; justify-content: space-around; padding: 5px 9px; border-radius: 32px;
   background: color-mix(in srgb, var(--surface) 46%, transparent); border: 0;
   -webkit-backdrop-filter: blur(24px) saturate(1.9) brightness(1.04); backdrop-filter: blur(24px) saturate(1.9) brightness(1.04);
   box-shadow:
@@ -165,7 +165,9 @@ body.sheet-full-open #edge-band { background-color: var(--surface); }
 .tab-glider.jump { transition: none; }
 .tab-glider.off { opacity: 0; }
 @media (prefers-reduced-motion: reduce) { .tab-glider { transition: none; } .tabbar button { transition: none; } }
-.tabbar button:active { background: color-mix(in srgb, var(--ink) 16%, transparent); }
+/* al tocar: el ícono se achica un poco; sin fondo propio, para que la única cápsula sea la que se desliza */
+.tabbar button svg { transition: transform .16s; }
+.tabbar button:active svg { transform: scale(.88); }
 
 /* ----- botón flotante ----- */
 #fab-slot { position: fixed; right: calc(var(--sar) + 16px); bottom: calc(var(--tab-h) + var(--sab) + 14px); z-index: 35; }
