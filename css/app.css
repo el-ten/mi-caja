@@ -671,3 +671,6 @@ body.guide { padding-bottom: calc(var(--sab) + 24px); }
 .glist li::marker { color: var(--green); font-weight: 700; }
 .g-inline { margin-top: 10px; }
 .guide code { font-size: .9em; background: var(--surface-2, rgba(0,0,0,.05)); padding: 1px 5px; border-radius: 6px; }
+
+/* Pagar resumen: el cálculo en renglones */
+.note.note-calc { flex-direction: column; align-items: stretch; gap: 6px; }

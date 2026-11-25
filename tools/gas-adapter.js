@@ -96,7 +96,7 @@ function mcDb(sheetHint) {
       for (var i = 0; i < d.length; i++) if (String(d[i][0]) === 'INICIO') return d[i];
       return null;
     },
-    cuentas: function () { var h = hoja('cue'); return h.getLastRow() >= 2 ? h.getRange(2, 1, h.getLastRow() - 1, 4).getValues() : []; },
+    cuentas: function () { var h = hoja('cue'); return h.getLastRow() >= 2 ? h.getRange(2, 1, h.getLastRow() - 1, 6).getValues() : []; },
     categorias: function () { var h = hoja('cat'); return h.getLastRow() >= 2 ? h.getRange(2, 1, h.getLastRow() - 1, 6).getValues() : []; },
     pagos: function () { return hoja('conf').getRange('E1:E7').getValues().map(function (r) { return r[0]; }); },
     subcats: function () {

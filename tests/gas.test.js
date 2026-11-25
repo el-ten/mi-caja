@@ -50,7 +50,7 @@ function book() {
     '03_CONFIGURACION': fakeSheet([['Tipo', 'Cat', 'x', 'Efectivo', 'Débito'], ['', '', '', '', 'Crédito'], ['', '', '', '', 'Transferencia'], ['', '', '', '', 'Efectivo'], ['', '', '', '', 'QR'], ['', '', '', '', 'Débito automático'], ['', '', '', '', 'Otro']]),
     '04_APP_AJUSTES': fakeSheet([['ID ajuste', 'Fecha', 'Cuenta', 'Sentido', 'Importe', 'Desc', 'Obs']]),
     '05_APP_INICIO': fakeSheet([['ID'], ['INICIO', AR(2026, 11, 1), 512922.49, 1060000, 705288.25, 0, 354711.75]]),
-    '06_APP_CUENTAS': fakeSheet([['Cuenta'], ['Banco', 'Dinero disponible', true, 1], ['Efectivo', 'Dinero disponible', true, 2], ['Tarjeta de crédito', 'Crédito', true, 4], ['Vieja', 'x', false, 9]]),
+    '06_APP_CUENTAS': fakeSheet([['Cuenta'], ['Banco', 'Dinero disponible', true, 1], ['Efectivo', 'Dinero disponible', true, 2], ['Tarjeta de crédito', 'Crédito', true, 4, 27, 10], ['Vieja', 'x', false, 9]]),
     '07_APP_CATEGORIAS': fakeSheet([['Cat'], ['Trabajo', 'Ingreso', false, 'No aplica', 1, true], ['Supermercado', 'Gasto', true, 'Necesario', 3, true]]),
   };
 }
@@ -64,6 +64,7 @@ test('Apps Script: lee la planilla real (fechas Date, filas vacías al final)', 
   assert.equal(r.rows[0].cents, 13078028);
   assert.deepEqual(r.summary, { month: '2026-11', cash: 51292249, income: 106000000, expense: 70528825, adjustments: 0, result: 35471175 });
   assert.deepEqual(r.catalog.accounts.map((a) => a.name), ['Banco', 'Efectivo', 'Tarjeta de crédito']);
+  assert.equal(r.catalog.accounts[2].closeDay, 27); assert.equal(r.catalog.accounts[2].dueDay, 10);
   assert.deepEqual(r.catalog.payments, ['Débito', 'Crédito', 'Transferencia', 'Efectivo', 'QR', 'Débito automático', 'Otro']);
 });
 

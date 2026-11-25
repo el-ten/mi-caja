@@ -17,7 +17,7 @@
 
 const MC_TYPES = ['Gasto', 'Ingreso', 'Transferencia propia', 'Ajuste', 'Saldo inicial'];
 // Versión del programa de la planilla. Subirla cuando cambie algo que la app necesite: la app avisa si la planilla tiene una anterior.
-const SERVER_VERSION = 3;
+const SERVER_VERSION = 4;
 const EDITABLE = MC_TYPES;
 const CARD_NAME = 'Tarjeta de crédito';
 const SERIE = 'PER-2609';
@@ -57,15 +57,19 @@ function coreValidDate(iso) {
 
 // ---------- catálogos ----------
 function coreCatalog(db) {
-  const accounts = db.cuentas().filter((r) => coreText(r[0]) && (r[2] === '' || r[2] == null || coreBool(r[2])))
-    .map((r, i) => ({ name: coreText(r[0]), kind: coreText(r[1]), order: coreNum(r[3]) || 100 + i }))
+  const all = db.cuentas().filter((r) => coreText(r[0]));
+  // Tarjetas: también las desactivadas, para poder corregir consumos viejos de una tarjeta que ya no se usa.
+  const creditAll = all.filter((r) => /cr[eé]dito/i.test(coreText(r[1])) || coreText(r[0]) === CARD_NAME).map((r) => coreText(r[0]));
+  const day = (v) => { const n = Math.round(coreNum(v)); return n >= 1 && n <= 31 ? n : 0; };
+  const accounts = all.filter((r) => r[2] === '' || r[2] == null || coreBool(r[2]))
+    .map((r, i) => ({ name: coreText(r[0]), kind: coreText(r[1]), order: coreNum(r[3]) || 100 + i, closeDay: day(r[4]), dueDay: day(r[5]) }))
     .sort((a, b) => a.order - b.order);
   const categories = db.categorias().filter((r) => coreText(r[0]) && (r[5] === '' || r[5] == null || coreBool(r[5])))
     .map((r, i) => ({ name: coreText(r[0]), type: coreText(r[1]) || 'Gasto', frequent: coreBool(r[2]), priority: coreText(r[3]), order: coreNum(r[4]) || 100 + i }))
     .sort((a, b) => a.order - b.order);
   const payments = db.pagos().map(coreText).filter(Boolean);
   const subcats = db.subcats().map(coreText).filter(Boolean);
-  return { accounts, categories, payments, subcats };
+  return { accounts, categories, payments, subcats, creditAll };
 }
 
 // ---------- lectura ----------
@@ -126,7 +130,7 @@ function coreNormalize(rec, cat, opts) {
   if (!MC_TYPES.includes(rec.type)) fail('Tipo de movimiento no admitido.');
   if (!isEdit && !UUID_RE.test(rec.id || '')) fail('ID interno inválido.');
   const accNames = cat.accounts.map((a) => a.name);
-  const credit = cat.accounts.filter((a) => /cr[eé]dito/i.test(a.kind) || a.name === CARD_NAME).map((a) => a.name);
+  const credit = cat.creditAll || cat.accounts.filter((a) => /cr[eé]dito/i.test(a.kind) || a.name === CARD_NAME).map((a) => a.name);
   const account = coreText(rec.account);
   if (!accNames.includes(account) && !(isEdit && account === coreText(opts.prev && opts.prev.account))) fail(`La cuenta "${account}" no está activa en 06_APP_CUENTAS.`);
   if (!coreValidDate(rec.date)) fail('Fecha inválida.');

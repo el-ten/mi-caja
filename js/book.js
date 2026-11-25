@@ -36,10 +36,11 @@ function order(r) { return r.status !== 'synced' && !r.row ? 1e9 : r.row || 0; }
 // Resumen del mes: el de la planilla (05_APP_INICIO) más lo que todavía no subió.
 export function monthSummary(book, month) {
   const s = book.summary;
-  const extra = totals(book.pendingAdds, month);
-  const after = totals(book.edits.map((e) => e.after), month), before = totals(book.edits.map((e) => e.before).filter(Boolean), month);
+  const cr = creditNames(book.catalog);
+  const extra = totals(book.pendingAdds, month, cr);
+  const after = totals(book.edits.map((e) => e.after), month, cr), before = totals(book.edits.map((e) => e.before).filter(Boolean), month, cr);
   const delta = (k) => extra[k] + after[k] - before[k];
-  const local = s && s.month === month ? null : totals(book.rows.filter((r) => r.status === 'synced'), month);
+  const local = s && s.month === month ? null : totals(book.rows.filter((r) => r.status === 'synced'), month, cr);
   const base = (k) => (local ? local[k] : s ? s[k] : 0);
   const income = base('income') + delta('income'), expense = base('expense') + delta('expense'), adjustments = base('adjustments') + delta('adjustments');
   return {
@@ -49,6 +50,7 @@ export function monthSummary(book, month) {
   };
 }
 
+export function creditNames(catalog) { return [...new Set(['Tarjeta de crédito', ...((catalog.creditAll) || []), ...catalog.accounts.filter((a) => /cr[eé]dito/i.test(a.kind || '')).map((a) => a.name)])]; }
 export function isCredit(catalog, account) {
   const a = catalog.accounts.find((x) => x.name === account);
   return account === 'Tarjeta de crédito' || !!(a && /cr[eé]dito/i.test(a.kind || ''));

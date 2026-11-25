@@ -3,12 +3,13 @@ import { store } from './store.js';
 import { sync, startAutoSync, isSyncing } from './sync.js';
 import { api, ServerError, resetDemo } from './api.js';
 import { buildBook, monthSummary, isCredit, EDITABLE_TYPES } from './book.js';
-import { formatAmountInput, caretAfterFormat, convertAmount, suggestedCategories, subcategoriesFor, money, centsToInput } from './ledger.js';
+import { formatAmountInput, caretAfterFormat, convertAmount, parseAmount, suggestedCategories, subcategoriesFor, money, centsToInput } from './ledger.js';
+import { parseCardNote, cardNote, cardConfig, payMonthFor, dueDate, monthAdd, statements, openStatements, lastRealRate, fixedSuggestions, paymentPlan } from './cards.js';
 import { makeCode, parseCode, validUrl, sheetId } from './connect.js';
 import { icon } from './icons.js';
 import { VERSION, VERSION_FECHA } from './version.js';
 
-const LATEST_SERVER = 3; // versión de gas/Code.gs que espera esta app (ver SERVER_VERSION en core.js)
+const LATEST_SERVER = 4; // versión de gas/Code.gs que espera esta app (ver SERVER_VERSION en core.js)
 
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -47,6 +48,8 @@ const logoSvg = (id, size) => '<svg viewBox="0 0 512 512" width="' + size + '" h
 let book = buildBook(null, []);
 let page = 'home', mode = 'Gasto', draft = {}, editing = null, detailId = null, connectOpen = false;
 let filters = { month: '', type: 'Todos', cat: '', q: '' }, showCount = 120, historyY = 0;
+// Tarjeta: resumen que se está mirando ({ account, month }), lo que se está escribiendo en "Pagar resumen" y si se ven los fijos.
+let cardSel = null, payDraft = {}, fixedOpen = false, returnTo = '';
 let pendingRender = false, busy = false, swWaiting = null, swReady = false;
 
 // ---------- utilidades ----------
@@ -85,11 +88,13 @@ function renderSync() {
 function movCard(r) {
   const [ic, crop, lit] = kind(r);
   const sub = r.type === 'Transferencia propia' ? `${r.account} → ${r.destination}` : [r.category || r.type, r.account].filter(Boolean).join(' · ');
-  const chip = r.status === 'failed' ? '<span class="chip chip-err">No se pudo enviar</span>' : r.status === 'pending' ? `<span class="chip chip-warn">${r.editOf ? 'Corrección sin subir' : 'Sin subir'}</span>` : '';
+  const cn = r.payment === 'Crédito' ? parseCardNote(r.notes) : null;
+  const chip = (r.status === 'failed' ? '<span class="chip chip-err">No se pudo enviar</span>' : r.status === 'pending' ? `<span class="chip chip-warn">${r.editOf ? 'Corrección sin subir' : 'Sin subir'}</span>` : '')
+    + (cn && cn.estimated && r.currency === 'USD' ? '<span class="chip chip-info">Dólar estimado</span>' : '');
   return `<button type="button" class="card tap row-flex mov" data-detail="${esc(r.id)}">
     <span class="crop ${crop}">${icon(ic, 22)}</span>
     <span class="grow"><span class="ct">${esc(r.description || r.subcategory || r.category || r.type)}</span><span class="sub">${esc(sub)}</span>${chip ? `<span class="mov-chips">${chip}</span>` : ''}</span>
-    <span class="mov-amt"><b class="lit ${lit}">${sign(r)} ${money(r.cents)}</b><small>${r.currency === 'USD' ? `US$ ${(r.originalCents / 100).toLocaleString('es-AR', { minimumFractionDigits: 2 })}` : shortDate(r.date)}</small></span>
+    <span class="mov-amt"><b class="lit ${lit}">${sign(r)} ${money(r.cents)}</b><small>${r.currency === 'USD' ? `US$ ${(r.originalCents / 100).toLocaleString('es-AR', { minimumFractionDigits: 2 })}` : cn && cn.purchase ? 'compra ' + shortDate(cn.purchase) : shortDate(r.date)}</small></span>
   </button>`;
 }
 function emptyState(ic, title, text) { return `<div class="empty"><span class="empty-ic">${icon(ic, 30)}</span><h3>${title}</h3><p>${text}</p></div>`; }
@@ -122,9 +127,10 @@ function home() {
     <button type="button" class="q" data-new="Ajuste"><span class="q-ic q-adj">${icon('scale', 24)}</span>Diferencia de caja</button>
   </div>
   ${!book.rows.length && store.snapshot ? `<button type="button" class="note note-btn" data-new="Saldo inicial">${icon('wallet', 20)}<span><b>Primer paso:</b> cargá cuánta plata tenés hoy en cada cuenta.</span>${icon('right', 18)}</button>` : ''}
+  ${cardsSection()}
   ${installNudge()}
   <section class="sec"><div class="sec-head"><h2 class="sec-title">Últimos movimientos</h2>${book.rows.length > 6 ? '<button type="button" class="link" data-page="history">Ver todos</button>' : ''}</div>
-  <div class="list">${book.rows.slice(0, 6).map(movCard).join('') || emptyState('wallet', 'Sin movimientos', 'Cargá tu primer gasto con los botones de arriba.')}</div></section>
+  <div class="list">${book.rows.filter((r) => (r.date || '') <= today()).slice(0, 6).map(movCard).join('') || emptyState('wallet', 'Sin movimientos', 'Cargá tu primer gasto con los botones de arriba.')}</div></section>
   </div>`;
 }
 function installNudge() {
@@ -133,6 +139,161 @@ function installNudge() {
   let dismissed = false; try { dismissed = localStorage.getItem('mc-install-dismissed') === '1'; } catch {}
   if (!ios || standalone || dismissed) return '';
   return `<div class="nudge">${icon('share', 22)}<div class="grow"><b>Instalá Mi Caja en tu iPhone</b><p>Tocá Compartir y después "Añadir a pantalla de inicio". Así abre a pantalla completa y anda sin señal.</p></div><button class="icon-btn" type="button" id="hideNudge" aria-label="Ocultar">${icon('close', 18)}</button></div>`;
+}
+
+// ---------- Tarjetas ----------
+const mesDe = (ym) => MESES[Number(ym.slice(5, 7)) - 1] + (ym.slice(0, 4) !== String(new Date().getFullYear()) ? ' ' + ym.slice(0, 4) : '');
+const nonCredit = () => book.catalog.accounts.map((a) => a.name).filter((a) => !isCredit(book.catalog, a));
+function cardsSection() {
+  const open = openStatements(book.rows, book.catalog, today());
+  const rows = open.map((st) => `<button type="button" class="card tap row-flex mov" data-card="${esc(st.account)}|${st.month}">
+    <span class="crop crop-fuel-out">${icon('card', 22)}</span>
+    <span class="grow"><span class="ct">${esc(st.account)}</span><span class="sub">${mesDe(st.month)[0].toUpperCase() + mesDe(st.month).slice(1)} · ${st.items.length} ${st.items.length === 1 ? 'consumo' : 'consumos'}</span>${st.estimated ? '<span class="mov-chips"><span class="chip chip-info">Dólar estimado</span></span>' : ''}</span>
+    <span class="mov-amt"><b class="lit lit-out">${money(st.total)}</b><small>vence ${shortDate(st.due)}</small></span></button>`);
+  // Tarjetas sin resumen abierto pero con gastos fijos para cargar en el próximo
+  for (const a of book.catalog.accounts.map((x) => x.name).filter((n) => isCredit(book.catalog, n) && !open.some((s) => s.account === n))) {
+    const month = payMonthFor(today(), cardConfig(book.catalog, a)), n = fixedSuggestions(book.rows, book.catalog, a, month).length;
+    if (n) rows.push(`<button type="button" class="card tap row-flex mov" data-card="${esc(a)}|${month}"><span class="crop crop-blue">${icon('card', 22)}</span><span class="grow"><span class="ct">${esc(a)}</span><span class="sub">Cargá los ${n} gastos fijos del resumen de ${mesDe(month)}</span></span>${icon('right', 18)}</button>`);
+  }
+  return rows.length ? `<section class="sec"><div class="sec-head"><h2 class="sec-title">Tarjetas</h2></div><div class="list">${rows.join('')}</div></section>` : '';
+}
+function currentStatement() {
+  const st = statements(book.rows, book.catalog).find((s) => s.account === cardSel.account && s.month === cardSel.month);
+  return st || { account: cardSel.account, month: cardSel.month, items: [], payments: [], paid: false, ars: 0, usd: 0, usdArs: 0, total: 0, estimated: false, due: dueDate(cardSel.month, cardConfig(book.catalog, cardSel.account)) };
+}
+const usdFmt = (c) => `US$ ${(c / 100).toLocaleString('es-AR', { minimumFractionDigits: 2 })}`;
+function cardPage() {
+  const st = currentStatement(), cfg = cardConfig(book.catalog, st.account);
+  const fixed = st.paid ? [] : fixedSuggestions(book.rows, book.catalog, st.account, st.month);
+  const all = statements(book.rows, book.catalog).filter((s) => s.account === st.account).map((s) => s.month);
+  const months = [...new Set([...all.slice(-3), st.month, monthAdd(all.length ? all[all.length - 1] : st.month, 1)])].sort();
+  const paidCents = st.payments.reduce((t, p) => t + p.cents, 0);
+  const items = [...st.items].sort((a, b) => (parseCardNote(b.notes).purchase || b.date).localeCompare(parseCardNote(a.notes).purchase || a.date));
+  return `<div class="page">
+  <div class="page-head"><div><h1>${esc(st.account)}</h1><p>Resumen de ${mesDe(st.month)} · ${st.paid ? `pagado el ${fdate(st.payments[0].date)}` : `vence el ${fdate(st.due)} (aprox.)`}</p></div></div>
+  <div class="chips">${months.map((m) => `<button type="button" class="opt sm ${m === st.month ? 'on' : ''}" data-card="${esc(st.account)}|${m}">${mesDe(m)}</button>`).join('')}</div>
+  <div class="card">
+    ${st.ars || !st.usd ? `<div class="kv"><span class="k">Consumos en pesos</span><span class="v">${money(st.ars)}</span></div>` : ''}
+    ${st.usd ? `<div class="kv"><span class="k">Consumos en dólares</span><span class="v">${usdFmt(st.usd)} ≈ ${money(st.usdArs)}</span></div>` : ''}
+    <div class="kv"><span class="k">${st.estimated ? 'Total estimado' : 'Total'}</span><span class="v strong">${money(st.total)}</span></div>
+    ${st.paid ? `<div class="kv"><span class="k">Pagaste</span><span class="v strong">${money(paidCents)}</span></div>` : ''}
+    ${st.estimated ? '<p class="hint">Los dólares están a la última cotización que pagaste. Al pagar el resumen ponés la real y se corrigen todos juntos.</p>' : ''}
+  </div>
+  <div class="btn-col">
+    ${!st.paid && st.items.length ? `<button class="btn btn-primary btn-lg btn-block" type="button" data-pay-open>${icon('check', 20)} Pagar resumen</button>` : ''}
+    ${fixed.length ? `<button class="btn btn-soft btn-block" type="button" id="toggleFixed">${icon('refresh', 20)} Cargar gastos fijos (${fixed.length})</button>` : ''}
+    ${!st.paid ? `<button class="btn btn-ghost btn-block" type="button" data-card-add>${icon('plus', 20)} Agregar un consumo</button>` : ''}
+  </div>
+  ${fixedOpen && fixed.length ? `<div class="card"><p class="prose"><b>Fijos del resumen anterior.</b> Las cuotas avanzan solas. Si alguno vino con otro importe, después lo corregís.</p>
+    ${fixed.map((f, i) => `<label class="check"><input type="checkbox" class="fx" value="${i}" checked><span class="grow">${esc(f.description)}</span><b>${f.currency === 'USD' ? usdFmt(f.originalCents) : money(f.cents)}</b></label>`).join('')}
+    <button class="btn btn-primary btn-block" type="button" id="loadFixed">${icon('check', 20)} Cargar los marcados</button></div>` : ''}
+  <section class="sec"><h2 class="sec-title">Consumos (${st.items.length})</h2>
+  <div class="list">${items.map(movCard).join('') || emptyState('card', 'Sin consumos', 'Todavía no cargaste nada en este resumen.')}</div></section>
+  <p class="hint">Día de cierre ${cfg.close} y vencimiento ${cfg.due}: se cambian en la planilla, hoja 06_APP_CUENTAS.</p>
+  </div>`;
+}
+async function loadFixed() {
+  const st = currentStatement(), cfg = cardConfig(book.catalog, st.account);
+  const list = fixedSuggestions(book.rows, book.catalog, st.account, st.month);
+  const picked = [...document.querySelectorAll('.fx:checked')].map((x) => list[Number(x.value)]).filter(Boolean);
+  if (!picked.length) { toast('Marcá al menos uno.', 'warn'); return; }
+  const rate = lastRealRate(book.rows), date = st.items.length ? st.due : dueDate(st.month, cfg);
+  for (const f of picked) {
+    let { cents, exchangeRate } = f;
+    if (f.currency === 'USD' && rate) ({ cents, exchangeRate } = convertAmount(centsToInput(f.originalCents), 'USD', rate));
+    const purchase = f.purchase && f.purchase <= today() ? f.purchase : today();
+    await store.enqueue({ t: 'add', rec: {
+      id: store.newUuid(), type: 'Gasto', date, account: st.account, currency: f.currency, originalCents: f.originalCents, cents, exchangeRate: f.currency === 'USD' ? exchangeRate : null,
+      category: f.category, subcategory: f.subcategory || '', description: f.description, notes: cardNote({ purchase, estimated: f.currency === 'USD', rest: f.rest }),
+      payment: 'Crédito', frequency: 'Fijo', priority: f.priority || '', destination: '', direction: '' } });
+  }
+  fixedOpen = false;
+  toast(`${picked.length === 1 ? 'Se cargó 1 gasto fijo' : `Se cargaron ${picked.length} gastos fijos`}. Se envían solos.`, 'ok', 2600);
+}
+
+// Pagar el resumen
+function payDefaults(st) {
+  const from = nonCredit();
+  return {
+    payFrom: payDraft.payFrom || (from.includes('Banco') ? 'Banco' : from[0]),
+    payDate: payDraft.payDate || today(),
+    payRate: payDraft.payRate ?? formatAmountInput((lastRealRate(book.rows) || (st.items.find((r) => r.currency === 'USD') || {}).exchangeRate || '').replace('.', ','), 6),
+    payAmount: payDraft.payAmount ?? '',
+  };
+}
+function readPay() {
+  const st = currentStatement(), d = payDefaults(st);
+  let rateCents = () => 0, rate = null;
+  if (st.usd) { rate = convertAmount('1', 'USD', d.payRate).exchangeRate; rateCents = (oc) => convertAmount(centsToInput(oc), 'USD', d.payRate).cents; }
+  const items = paymentPlan(st, rateCents, 0).itemsTotal;
+  const paid = d.payAmount ? parseAmount(d.payAmount) : null;
+  return { st, d, rate, items, paid, plan: paymentPlan(st, rateCents, paid || 0) };
+}
+function updatePayCalc() {
+  const el = $('#payCalc'); if (!el) return;
+  let x; try { x = readPay(); } catch (e) { el.innerHTML = `<span>${esc(e.message)}</span>`; return; }
+  const lines = [`Consumos cargados${x.st.usd ? ' con esa cotización' : ''}: <b>${money(x.items)}</b>`];
+  if (x.paid != null) {
+    const diff = x.paid - x.items;
+    if (diff > 100) lines.push(`Diferencia: <b>${money(diff)}</b>. Se carga como "Impuestos y cargos del resumen" (percepciones, intereses, mantenimiento).`);
+    else if (diff < -100) lines.push(`Pagaste <b>${money(-diff)}</b> menos que lo cargado. Revisá los consumos; si fue un pago parcial, lo que falta queda en la tarjeta.`);
+    else lines.push('Coincide con lo cargado.');
+  } else lines.push('Poné lo que te debitaron en total para ver la diferencia.');
+  el.innerHTML = lines.map((l) => `<span>${l}</span>`).join('');
+}
+function payPage() {
+  const st = currentStatement(), d = payDefaults(st), from = nonCredit();
+  return `<div class="page">
+  <div class="page-head"><div><h1>Pagar resumen</h1><p>${esc(st.account)} · ${mesDe(st.month)} · ${st.items.length} consumos</p></div></div>
+  <form id="payForm" class="form" autocomplete="off" novalidate>
+    <div class="amount-card">
+      <div class="amount-top"><span class="f-label">Total que pagaste, en pesos</span></div>
+      <div class="amount-line"><span class="amount-cur">$</span><input class="money" id="payAmount" type="text" inputmode="decimal" autocorrect="off" spellcheck="false" placeholder="${esc(formatAmountInput(centsToInput(st.total)))}" value="${esc(d.payAmount)}" aria-label="Total pagado"></div>
+      ${st.usd ? `<div class="amount-rate"><span class="f-label">Cotización del dólar que te cobraron</span><input class="input" id="payRate" type="text" inputmode="decimal" autocorrect="off" spellcheck="false" value="${esc(d.payRate)}"><span class="hint">Tenés ${usdFmt(st.usd)} en consumos en dólares.</span></div>` : ''}
+    </div>
+    <div class="note note-calc" id="payCalc" aria-live="polite"></div>
+    ${field('Pagaste desde', select('payFrom', 'payFrom', opts(from, d.payFrom)))}
+    ${field('Fecha de pago', `<div class="input pick-wrap"><span class="pick-shown">${d.payDate === today() ? 'Hoy · ' : ''}${shortDate(d.payDate)}</span>${icon('calendar', 20)}<input class="pick-native" type="date" id="payDate" value="${esc(d.payDate)}" max="${today()}" aria-label="Fecha de pago"></div>`)}
+    <p class="hint">Al registrar el pago: los consumos pasan a la fecha de pago (cuentan en ese mes), los dólares quedan con la cotización real y se descuenta lo pagado de la cuenta.</p>
+    <p class="err" id="payError" role="alert"></p>
+    <div class="btn-col">
+      <button class="btn btn-primary btn-lg btn-block" id="paySave" type="submit">${icon('check', 20)} Registrar pago</button>
+      <button class="btn btn-ghost btn-block" type="button" data-card="${esc(st.account)}|${st.month}">Volver al resumen</button>
+    </div>
+  </form></div>`;
+}
+const REC_KEYS = ['id', 'type', 'date', 'account', 'currency', 'originalCents', 'cents', 'exchangeRate', 'category', 'subcategory', 'description', 'notes', 'payment', 'frequency', 'priority', 'destination', 'direction'];
+const recOf = (r) => Object.fromEntries(REC_KEYS.map((k) => [k, r[k] ?? (k === 'exchangeRate' ? null : '')]));
+async function doPay() {
+  const { st, d, rate, plan, paid } = readPay();
+  if (paid == null) throw Error('Poné el total que pagaste.');
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(d.payDate) || d.payDate > today()) throw Error('Revisá la fecha de pago.');
+  if (st.items.some((r) => store.ops.some((o) => o.id === r.opId && o.sent))) throw Error('Se está terminando de enviar un consumo. Probá en unos segundos.');
+  let fixedN = 0;
+  for (const { r, cents } of plan.items) {
+    const cn = parseCardNote(r.notes);
+    const ch = { date: d.payDate, cents, notes: cardNote({ ...cn, purchase: cn.purchase || r.date, estimated: false }) };
+    if (r.currency === 'USD') ch.exchangeRate = rate;
+    const before = recOf(r), next = { ...before, ...ch };
+    if (JSON.stringify(next) === JSON.stringify(before)) continue;
+    fixedN++;
+    const op = r.opId && store.ops.find((o) => o.id === r.opId);
+    if (op) await store.replaceOp(op.id, { rec: { ...op.rec, ...ch } });
+    else await store.enqueue({ t: 'edit', key: r.id, prev: r, rec: next });
+  }
+  if (plan.extra > 100) {
+    const cats = catList('Gasto'), category = cats.includes('Gastos bancarios') ? 'Gastos bancarios' : cats.includes('Impuestos') ? 'Impuestos' : 'Otros gastos';
+    const subcategory = category === 'Gastos bancarios' && (book.catalog.subcats || []).includes('Comisiones / mantenimiento') ? 'Comisiones / mantenimiento' : '';
+    await store.enqueue({ t: 'add', rec: { id: store.newUuid(), type: 'Gasto', date: d.payDate, account: st.account, currency: 'ARS', originalCents: plan.extra, cents: plan.extra, exchangeRate: null,
+      category, subcategory, description: `Impuestos y cargos del resumen ${st.account}`, notes: 'Diferencia entre lo pagado y los consumos cargados (percepciones, intereses, mantenimiento).',
+      payment: 'Crédito', frequency: 'Variable', priority: 'Necesario', destination: '', direction: '' } });
+  }
+  await store.enqueue({ t: 'add', rec: { id: store.newUuid(), type: 'Transferencia propia', date: d.payDate, account: d.payFrom, currency: 'ARS', originalCents: paid, cents: paid, exchangeRate: null,
+    category: '', subcategory: '', description: `Pago resumen ${st.account} ${mesDe(st.month)}`, notes: rate ? `Cotización del dólar: ${String(rate).replace('.', ',')}` : '',
+    payment: 'Transferencia', frequency: '', priority: 'No aplica', destination: st.account, direction: '' } });
+  payDraft = {}; cardSel = { account: st.account, month: d.payDate.slice(0, 7) };
+  page = 'saved'; navigate('home');
+  toast(`Pago registrado${rate && st.usd ? ' con el dólar a ' + String(rate).replace('.', ',') : ''}. Se envía solo.`, 'ok', 3000);
 }
 
 // ---------- Cargar / corregir ----------
@@ -156,6 +317,11 @@ function form() {
   const payment = credit && mode === 'Gasto' ? 'Crédito' : (d.payment && payments.includes(d.payment) ? d.payment : defaultPayment(account));
   const prio = d.priority ?? ((cat.categories.find((c) => c.name === category) || {}).priority || '');
   const date = d.date || today();
+  // Compra con tarjeta: en qué resumen entra (mes en que se paga) y cotización estimada si es en dólares.
+  const cardMode = credit && mode === 'Gasto', cfg = cardMode ? cardConfig(cat, account) : null;
+  const autoM = cardMode ? payMonthFor(date, cfg) : '', payM = cardMode ? d.payMonth || autoM : '';
+  const payMonths = cardMode ? [...new Set([autoM, monthAdd(autoM, 1), payM])].sort() : [];
+  const rateValue = d.exchangeRate || (cardMode ? lastRealRate(book.rows).replace('.', ',') : '');
   const titles = { Gasto: 'Nuevo gasto', Ingreso: 'Nuevo ingreso', 'Transferencia propia': 'Transferencia entre cuentas', Ajuste: 'Diferencia de caja', 'Saldo inicial': 'Saldo inicial de una cuenta' };
   const dest = d.destination && d.destination !== account ? d.destination : accounts.find((a) => a !== account && isCredit(cat, a)) || accounts.find((a) => a !== account);
   return `<div class="page">
@@ -167,18 +333,18 @@ function form() {
     <div class="amount-card">
       <div class="amount-top"><span class="f-label">Importe ${usd ? 'en dólares' : 'en pesos'}</span>${withCat ? `<div class="seg seg-mini">${['ARS', 'USD'].map((c) => `<button type="button" data-cur="${c}" class="${currency === c ? 'on' : ''}">${c === 'ARS' ? 'Pesos' : 'Dólares'}</button>`).join('')}</div>` : ''}</div>
       <div class="amount-line"><span class="amount-cur">${usd ? 'US$' : '$'}</span><input class="money" id="amount" name="amount" type="text" inputmode="decimal" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="0" value="${esc(formatAmountInput(d.amount ?? ''))}" aria-label="Importe"></div>
-      ${usd ? `<div class="amount-rate"><span class="f-label">Tipo de cambio (pesos por dólar)</span><input class="input" id="exchangeRate" name="exchangeRate" type="text" inputmode="decimal" autocorrect="off" spellcheck="false" placeholder="Ej.: 1585" value="${esc(formatAmountInput(d.exchangeRate || '', 6))}"><span class="hint" id="converted" aria-live="polite"></span></div>` : ''}
+      ${usd ? `<div class="amount-rate"><span class="f-label">Tipo de cambio (pesos por dólar)</span><input class="input" id="exchangeRate" name="exchangeRate" type="text" inputmode="decimal" autocorrect="off" spellcheck="false" placeholder="Ej.: 1585" value="${esc(formatAmountInput(rateValue, 6))}"><span class="hint" id="converted" aria-live="polite"></span>${cardMode ? '<span class="hint">Cotización estimada (la última que pagaste). Se corrige sola cuando pagás el resumen.</span>' : ''}</div>` : ''}
     </div>
     ${withCat ? field('Categoría', `${select('category', 'category', opts(cats, category))}${mode === 'Gasto' && !editing ? `<div class="chips sug">${suggestedCategories(book.rows, cats, today(), 4, frequent).map((c) => `<button type="button" class="opt sm ${c === category ? 'on' : ''}" data-cat="${esc(c)}">${esc(c)}</button>`).join('')}</div>` : ''}`) : ''}
     ${withCat ? field('Subcategoría <span class="opt-label">opcional</span>', select('subcategory', 'subcategory', `<option value="">Sin especificar</option>${sub.used.length ? `<optgroup label="Usadas con ${esc(category)}">${opts(sub.used, d.subcategory || '')}</optgroup><optgroup label="Otras">${opts(sub.rest, d.subcategory || '')}</optgroup>` : opts(sub.rest, d.subcategory || '')}`)) : ''}
     ${adjust ? field('Diferencia', `<div class="chips">${['Faltante', 'Sobrante'].map((v) => `<button type="button" class="opt ${(d.direction || 'Faltante') === v ? 'on' : ''}" data-dir="${v}">${v === 'Faltante' ? 'Falta plata' : 'Sobra plata'}</button>`).join('')}</div><input type="hidden" name="direction" value="${esc(d.direction || 'Faltante')}"><span class="hint">Para cuando contás la plata y no coincide con lo registrado. No suma a los gastos.</span>`) : ''}
     ${field(transfer ? 'Desde' : start ? 'Cuenta' : 'Cuenta / medio', select('account', 'account', opts(editing && !fromAccounts.includes(account) ? [account, ...fromAccounts] : fromAccounts, account)))}
     ${transfer ? field('Hacia', `${select('destination', 'destination', opts(accounts.filter((a) => a !== account), dest))}<span class="hint">Pagar el resumen de la tarjeta es una transferencia hacia la tarjeta: baja tu disponible sin sumar otro gasto.</span>`) : ''}
-    ${withCat ? (credit && mode === 'Gasto' ? `<div class="note">${icon('card', 20)}<span>Compra con tarjeta: cuenta como gasto del mes, pero no baja tu disponible hasta que pagues el resumen.</span></div><input type="hidden" name="payment" value="Crédito">`
+    ${withCat ? (cardMode ? `${field('Entra en el resumen que pagás en', `<div class="chips">${payMonths.map((m) => `<button type="button" class="opt sm ${m === payM ? 'on' : ''}" data-paymonth="${m}">${mesDe(m)}</button>`).join('')}</div><input type="hidden" name="payMonth" value="${payM}"><span class="hint">Vence aprox. el ${fdate(dueDate(payM, cfg))}. Cuenta como gasto de ${mesDe(payM)}, cuando lo pagás; recién ahí baja tu disponible.</span>`)}<input type="hidden" name="payment" value="Crédito">`
       : field('Forma de pago', `<div class="chips">${payments.map((p) => `<button type="button" class="opt sm ${p === payment ? 'on' : ''}" data-pay="${esc(p)}">${esc(p)}</button>`).join('')}</div><input type="hidden" name="payment" value="${esc(payment)}">`)) : ''}
     ${field('Descripción <span class="opt-label">opcional</span>', `<input class="input" name="description" id="description" maxlength="240" placeholder="${start ? 'Saldo inicial' : '¿En qué fue?'}" value="${esc(d.description || '')}">`)}
     <p class="f-section">Datos adicionales</p>
-    ${field('Fecha', `<div class="input pick-wrap"><span class="pick-shown">${date === today() ? 'Hoy · ' : ''}${shortDate(date)}</span>${icon('calendar', 20)}<input class="pick-native" type="date" id="date" name="date" value="${esc(date)}" max="${today()}" aria-label="Fecha"></div>`)}
+    ${field(cardMode ? 'Fecha de compra' : 'Fecha', `<div class="input pick-wrap"><span class="pick-shown">${date === today() ? 'Hoy · ' : ''}${shortDate(date)}</span>${icon('calendar', 20)}<input class="pick-native" type="date" id="date" name="date" value="${esc(date)}" max="${today()}" aria-label="Fecha"></div>`)}
     ${mode === 'Gasto' ? `<div class="row-2">${field('Fijo / variable', select('frequency', 'frequency', opts(['Variable', 'Fijo'], d.frequency || 'Variable')))}${field('Prioridad', select('priority', 'priority', `<option value="">Sin especificar</option>${opts(['Necesario', 'Discrecional', 'No aplica'], prio)}`))}</div>` : ''}
     ${field('Observaciones <span class="opt-label">opcional</span>', `<textarea class="input" id="notes" name="notes" maxlength="1000" rows="2">${esc(d.notes || '')}</textarea>`)}
     <p class="err" id="formError" role="alert"></p>
@@ -205,9 +371,18 @@ async function save(f) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(d.date || '')) throw Error('Revisá la fecha.');
   if (d.date > today()) throw Error('La fecha no puede ser futura.');
   if (mode === 'Transferencia propia' && d.account === d.destination) throw Error('Elegí dos cuentas distintas.');
+  let date = d.date, notes = (d.notes || '').trim(), cardMonth = '';
+  if (mode === 'Gasto' && isCredit(book.catalog, d.account)) {
+    // Va con la fecha de pago del resumen; la de compra queda en Observaciones.
+    const cfg = cardConfig(book.catalog, d.account);
+    cardMonth = d.payMonth || payMonthFor(d.date, cfg);
+    date = draft._origDate && draft._origDate.slice(0, 7) === cardMonth ? draft._origDate : dueDate(cardMonth, cfg);
+    const paidAlready = book.rows.some((t) => t.type === 'Transferencia propia' && t.destination === d.account && (t.date || '').startsWith(cardMonth));
+    notes = cardNote({ purchase: d.date, estimated: currency === 'USD' && !paidAlready, rest: notes });
+  }
   const rec = {
-    id: editing ? editing.id : store.newUuid(), type: mode, date: d.date, account: d.account, currency, originalCents, cents, exchangeRate,
-    category: d.category || '', subcategory: d.subcategory || '', description: (d.description || '').trim(), notes: (d.notes || '').trim(),
+    id: editing ? editing.id : store.newUuid(), type: mode, date, account: d.account, currency, originalCents, cents, exchangeRate,
+    category: d.category || '', subcategory: d.subcategory || '', description: (d.description || '').trim(), notes,
     payment: mode === 'Transferencia propia' ? 'Transferencia' : d.payment || '', frequency: mode === 'Gasto' ? d.frequency || 'Variable' : '',
     priority: mode === 'Gasto' ? d.priority || '' : mode === 'Transferencia propia' ? 'No aplica' : '', destination: d.destination || '', direction: d.direction || '',
   };
@@ -217,11 +392,11 @@ async function save(f) {
     const op = store.ops.find((o) => o.id === editing.opId);
     await store.replaceOp(editing.opId, op && op.t === 'edit' ? { rec: { ...rec, id: op.key } } : { rec });
   } else await store.enqueue({ t: 'edit', key: editing.id, prev: editing.prev, rec });
-  const wasEdit = !!editing;
+  const wasEdit = !!editing, back = returnTo;
   if (editing) mode = 'Gasto';
-  editing = null; draft = {}; page = 'saved';
-  navigate('home');
-  toast(wasEdit ? 'Corrección guardada. Se envía sola.' : 'Guardado. Se envía solo a la planilla.', 'ok');
+  editing = null; draft = {}; page = 'saved'; returnTo = '';
+  navigate(back || 'home');
+  toast(wasEdit ? 'Corrección guardada. Se envía sola.' : cardMonth ? `Guardado. Cuenta en los gastos de ${mesDe(cardMonth)}, cuando pagues el resumen.` : 'Guardado. Se envía solo a la planilla.', 'ok', cardMonth ? 3000 : undefined);
 }
 
 // ---------- Movimientos ----------
@@ -233,7 +408,7 @@ function history() {
     && (!q || [r.description, r.category, r.subcategory, r.account, r.notes, r.displayId, money(r.cents)].join(' ').toLowerCase().includes(q)));
   const out = list.filter((r) => r.type === 'Gasto').reduce((t, r) => t + r.cents, 0), inn = list.filter((r) => r.type === 'Ingreso').reduce((t, r) => t + r.cents, 0);
   let html = '', lastDay = '';
-  for (const r of list.slice(0, showCount)) { if (r.date !== lastDay) { lastDay = r.date; html += `<h3 class="group-title">${dayLabel(r.date)}</h3>`; } html += movCard(r); }
+  for (const r of list.slice(0, showCount)) { if (r.date !== lastDay) { lastDay = r.date; html += `<h3 class="group-title">${dayLabel(r.date)}${r.date > today() ? ' · a pagar con tarjeta' : ''}</h3>`; } html += movCard(r); }
   return `<div class="page">
   <div class="page-head"><div><h1>Movimientos</h1><p>${list.length} ${list.length === 1 ? 'movimiento' : 'movimientos'}${filters.month ? ' en ' + monthName(filters.month) : ''}</p></div></div>
   <div class="seg">${['Todos', 'Gasto', 'Ingreso', 'Otros'].map((t) => `<button type="button" data-ftype="${t}" class="${filters.type === t ? 'on' : ''}">${t === 'Gasto' ? 'Gastos' : t === 'Ingreso' ? 'Ingresos' : t}</button>`).join('')}</div>
@@ -250,9 +425,10 @@ function history() {
 
 function detail(r) {
   const [ic, crop, lit] = kind(r);
-  const rows = [['Número', r.displayId || (r.status === 'synced' ? '' : 'Se asigna al enviar')], ['Fecha', fdate(r.date)], ['Tipo', r.type + (r.direction ? ` · ${r.direction}` : '')], ['Categoría', r.category], ['Subcategoría', r.subcategory],
-    ['Cuenta', r.account + (r.destination ? ` → ${r.destination}` : '')], ['Forma de pago', r.payment], ['Moneda', r.currency === 'USD' ? `US$ ${(r.originalCents / 100).toLocaleString('es-AR', { minimumFractionDigits: 2 })} a ${r.exchangeRate}` : ''],
-    ['Fijo / variable', r.frequency], ['Prioridad', r.priority], ['Observaciones', r.notes]].filter(([, v]) => v);
+  const cn = r.payment === 'Crédito' ? parseCardNote(r.notes) : null, future = (r.date || '') > today();
+  const rows = [['Número', r.displayId || (r.status === 'synced' ? '' : 'Se asigna al enviar')], ...(cn && cn.purchase ? [['Compra', fdate(cn.purchase)], [future ? 'Se paga (aprox.)' : 'Se pagó', fdate(r.date)]] : [['Fecha', fdate(r.date)]]), ['Tipo', r.type + (r.direction ? ` · ${r.direction}` : '')], ['Categoría', r.category], ['Subcategoría', r.subcategory],
+    ['Cuenta', r.account + (r.destination ? ` → ${r.destination}` : '')], ['Forma de pago', r.payment], ['Moneda', r.currency === 'USD' ? `US$ ${(r.originalCents / 100).toLocaleString('es-AR', { minimumFractionDigits: 2 })} a ${r.exchangeRate}${cn && cn.estimated ? ' (estimada)' : ''}` : ''],
+    ['Fijo / variable', r.frequency], ['Prioridad', r.priority], ['Observaciones', cn ? cn.rest : r.notes]].filter(([, v]) => v);
   const canEdit = EDITABLE_TYPES.includes(r.type);
   return `<div class="overlay in" data-overlay><div class="sheet" role="dialog" aria-modal="true" aria-label="Detalle del movimiento">
     <div class="sheet-head"><h2>${esc(r.description || r.subcategory || r.category || r.type)}</h2><button class="icon-btn" type="button" data-close aria-label="Cerrar">${icon('close', 22)}</button></div>
@@ -273,6 +449,10 @@ function openEdit(id) {
   if (store.ops.some((o) => o.id === r.opId && o.sent)) { toast('Se está terminando de enviar. Probá en unos segundos.', 'info'); return; }
   mode = r.type; detailId = null;
   draft = { ...r, amount: centsToInput(r.currency === 'USD' ? r.originalCents : r.cents), exchangeRate: r.exchangeRate ? String(r.exchangeRate).replace('.', ',') : '' };
+  if (r.type === 'Gasto' && isCredit(book.catalog, r.account)) {
+    const cn = parseCardNote(r.notes);
+    Object.assign(draft, { date: cn.purchase || r.date, notes: cn.rest, payMonth: r.date.slice(0, 7), payMonthManual: '1', _origDate: r.date });
+  }
   editing = r.opId ? { kind: 'op', opId: r.opId, id: r.id } : { kind: 'synced', id: r.id, displayId: r.displayId, prev: r };
   navigate('form');
 }
@@ -358,7 +538,7 @@ function welcome() {
 // ---------- navegación y dibujo ----------
 function navigate(next) {
   if (page === 'history') historyY = window.scrollY;
-  if (page === 'form' && next !== 'form') { if (editing) { editing = null; draft = {}; mode = 'Gasto'; } else capture(); }
+  if (page === 'form' && next !== 'form') { returnTo = ''; if (editing) { editing = null; draft = {}; mode = 'Gasto'; } else capture(); }
   page = next; detailId = null;
   renderNow();
   window.scrollTo({ top: next === 'history' ? historyY : 0, left: 0, behavior: 'instant' });
@@ -368,13 +548,15 @@ function renderNow() {
   renderSync();
   if (!store.config.mode) { document.body.classList.add('welcome'); $('#view').innerHTML = welcome(); $('#overlay').innerHTML = ''; return; }
   document.body.classList.remove('welcome');
-  $('#view').innerHTML = page === 'home' ? home() : page === 'form' ? form() : page === 'history' ? history() : settings();
+  if ((page === 'card' || page === 'pay') && !cardSel) page = 'home';
+  $('#view').innerHTML = page === 'home' ? home() : page === 'form' ? form() : page === 'history' ? history() : page === 'card' ? cardPage() : page === 'pay' ? payPage() : settings();
   $('#tabbar').querySelectorAll('button').forEach((b) => b.setAttribute('aria-current', String(b.dataset.page === page)));
   placeGlider();
   const r = detailId && book.rows.find((x) => x.id === detailId);
   $('#overlay').innerHTML = r ? detail(r) : '';
   document.body.classList.toggle('noscroll', !!r);
   if (page === 'form') updateConversion();
+  if (page === 'pay') updatePayCalc();
 }
 function safeRender() {
   const a = document.activeElement;
@@ -396,6 +578,12 @@ document.addEventListener('click', async (e) => {
   if (b.dataset.cat) { capture(); draft.category = b.dataset.cat; draft.subcategory = ''; draft.priority = undefined; renderNow(); return; }
   if (b.dataset.cur) { setDraft('currency', b.dataset.cur); return; }
   if (b.dataset.pay) { setDraft('payment', b.dataset.pay); return; }
+  if (b.dataset.paymonth) { capture(); draft.payMonth = b.dataset.paymonth; draft.payMonthManual = '1'; renderNow(); return; }
+  if (b.dataset.card) { const [account, month] = b.dataset.card.split('|'); cardSel = { account, month }; fixedOpen = false; navigate('card'); return; }
+  if (b.dataset.payOpen !== undefined) { payDraft = {}; navigate('pay'); return; }
+  if (b.dataset.cardAdd !== undefined) { editing = null; mode = 'Gasto'; draft = { account: cardSel.account, payMonth: cardSel.month, payMonthManual: '1' }; navigate('form'); returnTo = 'card'; return; }
+  if (b.id === 'toggleFixed') { fixedOpen = !fixedOpen; renderNow(); return; }
+  if (b.id === 'loadFixed') { b.disabled = true; try { await loadFixed(); } catch (err) { toast(err.message, 'err', 5000); b.disabled = false; } return; }
   if (b.dataset.dir) { setDraft('direction', b.dataset.dir); return; }
   if (b.dataset.ftype) { filters.type = b.dataset.ftype; showCount = 120; renderNow(); return; }
   if (b.dataset.detail) { detailId = b.dataset.detail; renderNow(); return; }
@@ -425,6 +613,11 @@ document.addEventListener('click', async (e) => {
 document.addEventListener('submit', async (e) => {
   e.preventDefault();
   if (e.target.id === 'connect') { await connect(); return; }
+  if (e.target.id === 'payForm') {
+    if (busy) return; busy = true; $('#paySave').disabled = true;
+    try { await doPay(); } catch (err) { const el = $('#payError'); if (el) el.textContent = err.message; const s = $('#paySave'); if (s) s.disabled = false; } finally { busy = false; }
+    return;
+  }
   if (e.target.id !== 'entry' || busy) return;
   busy = true; $('#save').disabled = true;
   try { await save(e.target); } catch (err) { const el = $('#formError'); if (el) el.textContent = err.message; const s = $('#save'); if (s) s.disabled = false; } finally { busy = false; }
@@ -433,7 +626,7 @@ document.addEventListener('submit', async (e) => {
 function formatMoneyField(input) {
   const raw = input.value, st = input.selectionStart ?? raw.length;
   const before = raw.slice(0, st).replace(/[^\d,]/g, '').length;
-  const out = formatAmountInput(raw, input.id === 'exchangeRate' ? 6 : 2);
+  const out = formatAmountInput(raw, input.id === 'exchangeRate' || input.id === 'payRate' ? 6 : 2);
   if (out === raw) return;
   input.value = out;
   const pos = caretAfterFormat(out, before);
@@ -441,17 +634,19 @@ function formatMoneyField(input) {
 }
 document.addEventListener('input', (e) => {
   if (['amount', 'exchangeRate'].includes(e.target.id)) { if (!e.isComposing) formatMoneyField(e.target); updateConversion(); }
+  if (['payAmount', 'payRate'].includes(e.target.id)) { if (!e.isComposing) formatMoneyField(e.target); payDraft[e.target.id] = e.target.value; updatePayCalc(); }
   if (e.target.id === 'q') { filters.q = e.target.value; clearTimeout(window.__qt); window.__qt = setTimeout(() => { const pos = e.target.selectionStart; renderNow(); const q = $('#q'); if (q) { q.focus(); q.setSelectionRange(pos, pos); } }, 250); }
 });
 document.addEventListener('change', (e) => {
   const id = e.target.id;
   if (id === 'account' || id === 'category') {
     capture();
-    if (id === 'account') draft.payment = defaultPayment(e.target.value);
+    if (id === 'account') { draft.payment = defaultPayment(e.target.value); if (!draft.payMonthManual) delete draft.payMonth; }
     if (id === 'category') { draft.subcategory = ''; draft.priority = undefined; }
     renderNow(); return;
   }
-  if (id === 'date') { setDraft('date', e.target.value || today()); return; }
+  if (id === 'date') { capture(); if (!draft.payMonthManual) delete draft.payMonth; draft.date = e.target.value || today(); renderNow(); return; }
+  if (id === 'payFrom' || id === 'payDate') { payDraft[id] = e.target.value || (id === 'payDate' ? today() : ''); renderNow(); return; }
   if (id === 'fMonth') { filters.month = e.target.value; showCount = 120; renderNow(); }
   if (id === 'fCat') { filters.cat = e.target.value; showCount = 120; renderNow(); }
   if (id === 'demoOffline') { store.demoOffline = e.target.checked; if (!e.target.checked) sync(); else { store.online = false; store.emit(); } }

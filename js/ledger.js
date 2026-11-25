@@ -67,12 +67,13 @@ export function convertAmount(raw, currency = 'ARS', rateRaw = '') {
 // - una compra con tarjeta de crédito es gasto, pero no baja el dinero disponible hasta pagar la tarjeta;
 // - una transferencia propia hacia la tarjeta (el pago del resumen) baja el disponible sin sumar gasto.
 export const CARD = 'Tarjeta de crédito';
-export function totals(rows, month) {
+// credit: nombres de las cuentas que son tarjeta (por defecto, la de siempre).
+export function totals(rows, month, credit = [CARD]) {
   return rows.reduce((t, r) => {
     const inMonth = String(r.date || '').startsWith(month);
     if (r.type === 'Gasto') {
       if (inMonth) t.expense += r.cents;
-      if (r.payment === 'Crédito' || r.account === CARD) t.credit += r.cents; else t.cash -= r.cents;
+      if (r.payment === 'Crédito' || credit.includes(r.account)) t.credit += r.cents; else t.cash -= r.cents;
     } else if (r.type === 'Ingreso') {
       if (inMonth) t.income += r.cents; t.cash += r.cents;
     } else if (r.type === 'Saldo inicial') {
@@ -81,7 +82,7 @@ export function totals(rows, month) {
       t.cash -= r.cents;
     } else if (r.type === 'Ajuste') {
       const n = r.direction === 'Faltante' ? -r.cents : r.cents; t.cash += n; if (inMonth) t.adjustments += n;
-    } else if (r.type === 'Transferencia propia' && r.destination === CARD) {
+    } else if (r.type === 'Transferencia propia' && credit.includes(r.destination)) {
       t.cash -= r.cents; t.credit -= r.cents;
     }
     return t;

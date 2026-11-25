@@ -20,7 +20,7 @@ test('clave obligatoria', () => {
 test('alta con número legible correlativo y fórmulas', () => {
   const m = mk();
   const res = write(m, [{ id: 'op1', t: 'add', rec: gasto() }, { id: 'op2', t: 'add', rec: gasto() }]);
-  assert.deepEqual(res.results.map((r) => r.assigned), ['PER-2609-011', 'PER-2609-012']);
+  assert.deepEqual(res.results.map((r) => r.assigned), ['PER-2609-093', 'PER-2609-094']);
   const last = m.state.mov.at(-1);
   assert.equal(last[2], '2026-11-01'); assert.equal(last[11], 1500); assert.match(last[17], /^MC-/);
 });
@@ -42,12 +42,12 @@ test('un error no frena al resto del lote', () => {
 
 test('tarjeta: compra no baja el disponible hasta pagar el resumen', () => {
   const m = mk(); const before = read(m).summary.cash;
-  write(m, [{ id: 'a', t: 'add', rec: gasto({ account: 'Tarjeta de crédito', payment: 'Crédito' }) }]);
+  write(m, [{ id: 'a', t: 'add', rec: gasto({ account: 'Naranja X', payment: 'Crédito' }) }]);
   assert.equal(read(m).summary.cash, before);
   assert.equal(read(m).summary.expense > 0, true);
-  write(m, [{ id: 'b', t: 'add', rec: { id: uuid(), type: 'Transferencia propia', date: '2026-11-11', account: 'Banco', destination: 'Tarjeta de crédito', currency: 'ARS', originalCents: 150000, cents: 150000, description: 'Pago resumen' } }]);
+  write(m, [{ id: 'b', t: 'add', rec: { id: uuid(), type: 'Transferencia propia', date: '2026-11-11', account: 'Banco', destination: 'Naranja X', currency: 'ARS', originalCents: 150000, cents: 150000, description: 'Pago resumen' } }]);
   assert.equal(read(m).summary.cash, before - 150000);
-  const bad = write(m, [{ id: 'c', t: 'add', rec: gasto({ account: 'Tarjeta de crédito', payment: 'Débito' }) }]);
+  const bad = write(m, [{ id: 'c', t: 'add', rec: gasto({ account: 'Naranja X', payment: 'Débito' }) }]);
   assert.equal(bad.results[0].ok, false);
 });
 
@@ -111,7 +111,9 @@ test('la numeración sigue después del último número aunque haya huecos', () 
 
 test('catálogos salen de la planilla (cuentas activas y categorías por tipo)', () => {
   const s = read(mk());
-  assert.deepEqual(s.catalog.accounts.map((a) => a.name), ['Banco', 'Efectivo', 'Mercado Pago', 'Tarjeta de crédito', 'USD efectivo', 'Otra']);
+  assert.deepEqual(s.catalog.accounts.map((a) => a.name), ['Banco', 'Efectivo', 'Mercado Pago', 'Naranja X', 'Mercado Pago crédito', 'USD efectivo', 'Otra']);
+  assert.deepEqual([s.catalog.accounts[3].closeDay, s.catalog.accounts[3].dueDay], [27, 10]);
+  assert.ok(s.catalog.creditAll.includes('Tarjeta de crédito'), 'la tarjeta desactivada sigue contando como tarjeta');
   assert.equal(s.catalog.categories.find((c) => c.name === 'Tecnología').type, 'Ambos');
   assert.equal(s.catalog.subcats.length, 27);
 });
@@ -134,6 +136,22 @@ test('saldo inicial: se carga como en la planilla histórica y suma al disponibl
   const row = m.state.mov[0];
   assert.deepEqual([row[3], row[4], row[5], row[6], row[13], row[14]], ['Saldo inicial', 'Saldo inicial', 'Banco', 'Saldo inicial', 'No aplica', 'Otro']);
   assert.equal(read(m).summary.cash, 13078028);
-  assert.equal(write(m, [{ id: 'b', t: 'add', rec: { ...rec, id: uuid(), account: 'Tarjeta de crédito' } }]).results[0].ok, false);
-  assert.equal(read(m).serverVersion, 3);
+  assert.equal(write(m, [{ id: 'b', t: 'add', rec: { ...rec, id: uuid(), account: 'Naranja X' } }]).results[0].ok, false);
+  assert.equal(read(m).serverVersion, 4);
+});
+
+test('tarjeta desactivada: un consumo viejo se puede corregir sin cambiarle la cuenta', () => {
+  const m = mk();
+  m.state.mov.push(['PER-2609-095', '2026-11-11', '', 'Gasto', 'Suscripciones', '', 'Viejo', 'Tarjeta de crédito', 'ARS', 1000, '', 1000, 'Fijo', 'Discrecional', 'Crédito', '', '', '']);
+  const cur = read(m).rows.find((r) => r.displayId === 'PER-2609-095');
+  const r = write(m, [{ id: 'e', t: 'edit', key: cur.id, prev: cur, rec: { ...cur, description: 'Viejo corregido' } }]);
+  assert.equal(r.results[0].ok, true, r.results[0].error);
+});
+
+test('pago de un resumen con dos tarjetas: solo baja la caja lo pagado', () => {
+  const m = mk(); const before = read(m).summary.cash;
+  write(m, [{ id: 'a', t: 'add', rec: gasto({ account: 'Mercado Pago crédito', payment: 'Crédito', date: '2026-12-10', notes: 'Compra 05/11/2026' }) }]);
+  assert.equal(read(m).summary.cash, before);
+  write(m, [{ id: 'b', t: 'add', rec: { id: uuid(), type: 'Transferencia propia', date: '2026-11-11', account: 'Banco', destination: 'Mercado Pago crédito', currency: 'ARS', originalCents: 150000, cents: 150000, description: 'Pago' } }]);
+  assert.equal(read(m).summary.cash, before - 150000);
 });
