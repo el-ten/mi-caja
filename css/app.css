@@ -674,3 +674,11 @@ body.guide { padding-bottom: calc(var(--sab) + 24px); }
 
 /* Pagar resumen: el cálculo en renglones */
 .note.note-calc { flex-direction: column; align-items: stretch; gap: 6px; }
+
+/* Pantallas con encabezado verde (resumen de tarjeta, pagar resumen): en el celular queda FIJO debajo de la barra,
+   igual que en Don Enrique. El alto real lo mide un script en index.html (--dh-h). */
+@media (max-width: 719px) {
+  .page > .detail-head:first-child { position: fixed; top: var(--appbar-h, 58px); left: 0; right: 0; z-index: 25; margin: 0; }
+  .page:has(> .detail-head:first-child) { padding-top: calc(var(--dh-h, 96px) + 14px); }
+}
+.detail-head .crop { background: rgba(255, 255, 255, .14); color: var(--on-green); }

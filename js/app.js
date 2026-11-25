@@ -144,6 +144,12 @@ function installNudge() {
 // ---------- Tarjetas ----------
 const mesDe = (ym) => MESES[Number(ym.slice(5, 7)) - 1] + (ym.slice(0, 4) !== String(new Date().getFullYear()) ? ' ' + ym.slice(0, 4) : '');
 const nonCredit = () => book.catalog.accounts.map((a) => a.name).filter((a) => !isCredit(book.catalog, a));
+// Encabezado verde con flecha para volver (igual que las fichas de Don Enrique). back: 'home' o 'card:Cuenta|mes'.
+function detailHead(back, title, sub) {
+  const attr = back.startsWith('card:') ? `data-card="${esc(back.slice(5))}"` : `data-page="${back}"`;
+  return `<div class="detail-head"><button class="icon-btn light" type="button" ${attr} aria-label="Volver">${icon('left', 24)}</button>
+    <div class="dh-main"><span class="crop crop-fuel-out">${icon('card', 22)}</span><div><h1>${esc(title)}</h1><p>${esc(sub)}</p></div></div></div>`;
+}
 function cardsSection() {
   const open = openStatements(book.rows, book.catalog, today());
   const rows = open.map((st) => `<button type="button" class="card tap row-flex mov" data-card="${esc(st.account)}|${st.month}">
@@ -170,7 +176,7 @@ function cardPage() {
   const paidCents = st.payments.reduce((t, p) => t + p.cents, 0);
   const items = [...st.items].sort((a, b) => (parseCardNote(b.notes).purchase || b.date).localeCompare(parseCardNote(a.notes).purchase || a.date));
   return `<div class="page">
-  <div class="page-head"><div><h1>${esc(st.account)}</h1><p>Resumen de ${mesDe(st.month)} · ${st.paid ? `pagado el ${fdate(st.payments[0].date)}` : `vence el ${fdate(st.due)} (aprox.)`}</p></div></div>
+  ${detailHead('home', st.account, `Resumen de ${mesDe(st.month)} · ${st.paid ? `pagado el ${fdate(st.payments[0].date)}` : `vence el ${fdate(st.due)} (aprox.)`}`)}
   <div class="chips">${months.map((m) => `<button type="button" class="opt sm ${m === st.month ? 'on' : ''}" data-card="${esc(st.account)}|${m}">${mesDe(m)}</button>`).join('')}</div>
   <div class="card">
     ${st.ars || !st.usd ? `<div class="kv"><span class="k">Consumos en pesos</span><span class="v">${money(st.ars)}</span></div>` : ''}
@@ -244,7 +250,7 @@ function updatePayCalc() {
 function payPage() {
   const st = currentStatement(), d = payDefaults(st), from = nonCredit();
   return `<div class="page">
-  <div class="page-head"><div><h1>Pagar resumen</h1><p>${esc(st.account)} · ${mesDe(st.month)} · ${st.items.length} consumos</p></div></div>
+  ${detailHead(`card:${st.account}|${st.month}`, 'Pagar resumen', `${st.account} · ${mesDe(st.month)} · ${st.items.length} ${st.items.length === 1 ? "consumo" : "consumos"}`)}
   <form id="payForm" class="form" autocomplete="off" novalidate>
     <div class="amount-card">
       <div class="amount-top"><span class="f-label">Total que pagaste, en pesos</span></div>

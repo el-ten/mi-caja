@@ -39,6 +39,21 @@
     // La barra de arriba queda fija (no rebota con el scroll del iPhone). Se mide su alto para dejarle lugar al contenido.
     (function () { var a = document.getElementById('appbar'); if (!a) return; function m() { document.documentElement.style.setProperty('--appbar-h', a.offsetHeight + 'px'); } m(); addEventListener('resize', m); if (window.ResizeObserver) new ResizeObserver(m).observe(a); })();
   </script>
+  <script>
+    // Encabezado verde fijo (ver detail-head en app.css): se mide su alto para dejarle lugar al contenido.
+    (function () {
+      var ro = window.ResizeObserver ? new ResizeObserver(function (e) { set(e[0].target); }) : null, cur = null;
+      function set(el) { document.documentElement.style.setProperty('--dh-h', el.offsetHeight + 'px'); }
+      function check() {
+        var v = document.getElementById('view'), el = v && v.querySelector('.page > .detail-head:first-child');
+        if (el === cur) return;
+        if (ro && cur) ro.unobserve(cur);
+        cur = el;
+        if (el) { set(el); if (ro) ro.observe(el); }
+      }
+      document.addEventListener('DOMContentLoaded', function () { var v = document.getElementById('view'); if (v) new MutationObserver(check).observe(v, { childList: true, subtree: true }); check(); });
+    })();
+  </script>
   <div class="update-bar" id="update" hidden><span>Hay una versión nueva de Mi Caja.</span><button id="applyUpdate" type="button">Actualizar</button></div>
   <main id="view" tabindex="-1"></main>
   <nav class="tabbar" id="tabbar" aria-label="Secciones"></nav>
